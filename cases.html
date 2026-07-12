@@ -357,47 +357,43 @@
 </head>
 <body>
     <div class="container">
-        <!-- Вкладки навигации -->
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('cases-page')">📦 Кейсы</button>
             <button class="tab-btn" onclick="switchTab('upgrade-page')">⚡ Апгрейд</button>
         </div>
 
-        <!-- Общий баланс -->
         <div class="balance">
             <div>Ваш баланс:</div>
-            <div class="balance-amount" id="globalBalance">10000 руб</div>
-            <button class="credit-button" id="creditButton">Взять бонус (1000 руб)</button>
+            <div class="balance-amount" id="globalBalance">10000 руб.</div>
+            <button class="credit-button" id="creditButton">Взять бонус (1000 руб.)</button>
         </div>
 
-        <!-- СТРАНИЦА 1: КЕЙСЫ -->
         <div id="cases-page" class="page active">
             <div class="cases-container">
                 <div class="case-item" data-case="flea" data-price="100">
                     <div class="case-image">🛖</div>
                     <div class="case-name">Барахолка</div>
-                    <div class="case-price">100 руб</div>
+                    <div class="case-price">100 руб.</div>
                 </div>
                 <div class="case-item" data-case="market" data-price="500">
                     <div class="case-image">🏪</div>
                     <div class="case-name">Маркетплейс</div>
-                    <div class="case-price">500 руб</div>
+                    <div class="case-price">500 руб.</div>
                 </div>
                 <div class="case-item" data-case="cars" data-price="2500">
                     <div class="case-image">🏎️</div>
                     <div class="case-name">Автосалон</div>
-                    <div class="case-price">2500 руб</div>
+                    <div class="case-price">2500 руб.</div>
                 </div>
                 <div class="case-item" data-case="elite" data-price="10000">
                     <div class="case-image">👑</div>
                     <div class="case-name">Элита</div>
-                    <div class="case-price">10000 руб</div>
+                    <div class="case-price">10000 руб.</div>
                 </div>
             </div>
             <button class="action-button" id="openCaseButton" disabled>Выберите кейс</button>
         </div>
 
-        <!-- СТРАНИЦА 2: АПГРЕЙД -->
         <div id="upgrade-page" class="page">
             <div class="upgrade-zone">
                 <div class="upgrade-slots">
@@ -406,13 +402,11 @@
                     <div class="upgrade-slot" id="slot-output">❓</div>
                 </div>
                 
-                <!-- Информация о ценах апгрейда -->
                 <div class="upgrade-prices">
-                    <span id="price-input-label">Текущая цена: 0 руб</span>
-                    <span id="price-output-label">При успехе: 0 руб</span>
+                    <span id="price-input-label">Текущая цена: 0 руб.</span>
+                    <span id="price-output-label">При успехе: 0 руб.</span>
                 </div>
 
-                <!-- Линейка градации качеств -->
                 <div class="rarity-timeline">
                     <div class="timeline-step" id="step-common">Обыч.</div>
                     <div class="timeline-step" id="step-uncommon">Необ.</div>
@@ -426,7 +420,6 @@
             <button class="action-button" id="upgradeButton" disabled>Улучшить предмет</button>
         </div>
 
-        <!-- ОБЩИЙ ИНВЕНТАРЬ ДЛЯ ОБЕИХ ВКЛАДОК -->
         <div class="inventory">
             <h3>Ваш Инвентарь</h3>
             <div class="inventory-grid" id="inventoryGrid"></div>
@@ -434,7 +427,6 @@
 
         <div class="result" id="resultNotice"></div>
 
-        <!-- Экран анимации рулетки -->
         <div class="case-opening-animation" id="caseOpeningAnimation">
             <div class="case-items-container" id="caseItemsContainer"></div>
         </div>
@@ -447,18 +439,11 @@
         let currentBalance = 10000;
         let upgradeIndex = null;
 
+        // Порядковая матрица качеств и их коэффициентов стоимости
         const QUALITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
         const QUALITY_MULTIPLIERS = { common: 1, uncommon: 2, rare: 5, epic: 10, legendary: 25 };
-        
-        // Словарь для перевода названий качеств
-        const QUALITY_NAMES_RU = {
-            common: 'Обычный',
-            uncommon: 'Необычный',
-            rare: 'Редкий',
-            epic: 'Мифический',
-            legendary: 'Легендарный'
-        };
 
+        // Базовые предметы по категориям кейсов
         const CASE_POOLS = {
             flea: [
                 { name: 'Носки', emoji: '🧦', baseValue: 30 },
@@ -514,7 +499,7 @@
         function updateBalance(newBalance) {
             currentBalance = newBalance;
             localStorage.setItem('casino_balance_rub', currentBalance);
-            document.getElementById('globalBalance').textContent = currentBalance + ' руб';
+            document.getElementById('globalBalance').textContent = currentBalance + ' руб.';
             document.getElementById('creditButton').style.display = currentBalance <= 0 ? 'block' : 'none';
         }
 
@@ -538,7 +523,7 @@
                 
                 const sellBtn = document.createElement('div');
                 sellBtn.className = 'sell-button';
-                sellBtn.textContent = `${totalPrice}р`;
+                sellBtn.textContent = `${totalPrice}р.`;
                 sellBtn.onclick = (e) => {
                     e.stopPropagation();
                     sellItem(index);
@@ -560,7 +545,7 @@
             inventory.splice(index, 1);
             updateInventory();
             updateBalance(currentBalance + reward);
-            showNotice(`Продано за ${reward} руб!`, true);
+            showNotice(`Продано за ${reward} руб.!`, true);
         }
 
         /* --- ЛОГИКА КЕЙСОВ --- */
@@ -569,7 +554,7 @@
                 selectedCase = this.dataset.case;
                 const price = this.dataset.price;
                 document.getElementById('openCaseButton').disabled = false;
-                document.getElementById('openCaseButton').textContent = `Открыть за ${price} руб`;
+                document.getElementById('openCaseButton').textContent = `Открыть за ${price} руб.`;
                 document.querySelectorAll('.case-item').forEach(c => c.style.borderColor = 'transparent');
                 this.style.borderColor = 'var(--tg-theme-button-color, #3390ec)';
             });
@@ -589,6 +574,7 @@
             const pool = CASE_POOLS[selectedCase];
             const baseItem = pool[Math.floor(Math.random() * pool.length)];
             
+            // Расчет качества при выпадении (Шансы: Common 50%, Uncommon 25%, Rare 15%, Epic 8%, Legendary 2%)
             const roll = Math.random() * 100;
             let quality = 'common';
             if (roll > 50 && roll <= 75) quality = 'uncommon';
@@ -603,6 +589,7 @@
             wrapperContainer.innerHTML = '<div class="case-items-wrapper" id="animWrapper"></div><div class="case-selector"></div>';
             const wrapper = document.getElementById('animWrapper');
             
+            // Генерация ленты рулетки
             const allItemsFlattened = Object.values(CASE_POOLS).flat();
             for (let i = 0; i < 30; i++) {
                 const randItem = allItemsFlattened[Math.floor(Math.random() * allItemsFlattened.length)];
@@ -618,12 +605,7 @@
             void wrapper.offsetWidth;
             
             wrapper.style.transition = 'transform 3.5s cubic-bezier(0.15, 0.85, 0.35, 1)';
-            
-            // Точный сдвиг: ширина контейнера 320px (центр 160px). 
-            // Каждый элемент = 100px + 4px маржины = 104px. 
-            // 25-й элемент начинается на 2600px, его центр на 2652px. 
-            // Чтобы 2652px стало на место 160px, нужно сдвинуть на -2492px.
-            wrapper.style.transform = 'translateX(-2492px)'; 
+            wrapper.style.transform = 'translateX(-2600px)'; // точный сдвиг под 25-й элемент с учетом марджинов
             
             setTimeout(() => {
                 animContainer.style.display = 'none';
@@ -631,7 +613,8 @@
                 inventory.push(wonItem);
                 updateInventory();
                 
-                showNotice(`Выпало: ${wonItem.name} [${QUALITY_NAMES_RU[wonItem.quality]}]`, true);
+                const qualNames = { common: 'Обычный', uncommon: 'Необычный', rare: 'Редкий', epic: 'Мифический', legendary: 'Легендарный' };
+                showNotice(`Выпало: ${wonItem.name} [${qualNames[wonItem.quality]}]`, true);
                 document.getElementById('openCaseButton').disabled = false;
             }, 3600);
         });
@@ -644,17 +627,19 @@
             const currentQualityIndex = QUALITY_ORDER.indexOf(item.quality);
             const nextQuality = QUALITY_ORDER[currentQualityIndex + 1];
             
+            // Подсветка текущего уровня на шкале
             document.querySelectorAll('.timeline-step').forEach(s => s.className = 'timeline-step');
             document.getElementById(`step-${item.quality}`).classList.add(`q-${item.quality}`, 'active');
 
             const curPrice = item.baseValue * QUALITY_MULTIPLIERS[item.quality];
-            document.getElementById('price-input-label').textContent = `Текущая цена: ${curPrice} руб`;
+            document.getElementById('price-input-label').textContent = `Текущая цена: ${curPrice} руб.`;
 
             const slotIn = document.getElementById('slot-input');
             slotIn.className = `upgrade-slot q-${item.quality}`;
             slotIn.textContent = item.emoji;
 
             if(!nextQuality) {
+                // Максимальный уровень
                 document.getElementById('price-output-label').textContent = `Максимум достигнут`;
                 document.getElementById('slot-output').className = 'upgrade-slot';
                 document.getElementById('slot-output').textContent = '👑';
@@ -665,12 +650,13 @@
             }
 
             const nextPrice = item.baseValue * QUALITY_MULTIPLIERS[nextQuality];
-            document.getElementById('price-output-label').textContent = `При успехе: ${nextPrice} руб`;
+            document.getElementById('price-output-label').textContent = `При успехе: ${nextPrice} руб.`;
 
             const slotOut = document.getElementById('slot-output');
             slotOut.className = `upgrade-slot q-${nextQuality}`;
             slotOut.textContent = item.emoji;
 
+            // Расчет шансов для каждого перехода
             const chances = { common: 75, uncommon: 55, rare: 35, epic: 15 };
             const currentChance = chances[item.quality] || 50;
             
@@ -691,8 +677,8 @@
             slotOut.className = 'upgrade-slot';
             slotOut.textContent = '❓';
             
-            document.getElementById('price-input-label').textContent = 'Текущая цена: 0 руб';
-            document.getElementById('price-output-label').textContent = 'При успехе: 0 руб';
+            document.getElementById('price-input-label').textContent = 'Текущая цена: 0 руб.';
+            document.getElementById('price-output-label').textContent = 'При успехе: 0 руб.';
             document.getElementById('upgradeChance').textContent = 'Шанс успеха: 0%';
             document.getElementById('upgradeButton').disabled = true;
             
@@ -715,7 +701,7 @@
             if (roll <= currentChance) {
                 // Успех
                 inventory[upgradeIndex].quality = nextQuality;
-                showNotice(`Успешный апгрейд качества до: ${QUALITY_NAMES_RU[nextQuality]}!`, true);
+                showNotice(`Успешный апгрейд качества до ${nextQuality}!`, true);
             } else {
                 // Сгорел
                 inventory.splice(upgradeIndex, 1);
@@ -740,7 +726,7 @@
                 updateBalance(1000);
                 resetUpgrade();
                 updateInventory();
-                showNotice('Вам начислен антикризисный бонус 1000 руб!', true);
+                showNotice('Вам начислен антикризисный бонус 1000 руб.!', true);
             }
         });
     </script>
