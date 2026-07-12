@@ -1,734 +1,943 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мини-Казино</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 16px;
-            color: var(--tg-theme-text-color, #000000);
-            background: var(--tg-theme-bg-color, #ffffff);
-            user-select: none;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Торговый Терминал</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+    :root{
+        --bg: var(--tg-theme-bg-color, #0A0D12);
+        --surface: var(--tg-theme-secondary-bg-color, #141922);
+        --surface-2: #1B212C;
+        --border: rgba(201,169,97,0.16);
+        --gold: #C9A961;
+        --gold-bright: #E8C874;
+        --green: #1FAE64;
+        --red: #E5484D;
+        --text: var(--tg-theme-text-color, #E8E9ED);
+        --text-dim: var(--tg-theme-hint-color, #838C9C);
+        --mono: 'SF Mono', 'Roboto Mono', 'Consolas', monospace;
+    }
+    *{ box-sizing: border-box; }
+    body{
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        margin: 0; padding: 14px;
+        color: var(--text);
+        background: var(--bg);
+        user-select: none;
+    }
+    .container{ max-width: 400px; margin: 0 auto; }
 
-        .container {
-            max-width: 390px;
-            margin: 0 auto;
-        }
+    /* ---- Тикерная лента ---- */
+    .ticker-wrap{
+        overflow: hidden;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 12px;
+        padding: 8px 0;
+    }
+    .ticker-track{
+        display: flex;
+        white-space: nowrap;
+        animation: scroll-left 22s linear infinite;
+    }
+    .ticker-item{
+        font-family: var(--mono);
+        font-size: 12px;
+        padding: 0 16px;
+        border-right: 1px solid var(--border);
+        color: var(--text-dim);
+        letter-spacing: 0.2px;
+    }
+    .ticker-item b{ color: var(--text); font-weight: 600; }
+    .t-up{ color: var(--green); }
+    .t-down{ color: var(--red); }
+    @keyframes scroll-left{
+        0%{ transform: translateX(0); }
+        100%{ transform: translateX(-50%); }
+    }
 
-        /* Табы управления режимами */
-        .tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
+    /* ---- Табы ---- */
+    .tabs{ display: flex; gap: 8px; margin-bottom: 14px; }
+    .tab-btn{
+        flex: 1;
+        background: var(--surface);
+        color: var(--text-dim);
+        border: 1px solid var(--border);
+        padding: 11px 6px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 13px;
+        letter-spacing: 0.2px;
+        transition: all .15s ease;
+    }
+    .tab-btn.active{
+        background: linear-gradient(135deg, var(--gold), #A9853F);
+        color: #14110A;
+        border-color: transparent;
+    }
+    .page{ display: none; }
+    .page.active{ display: block; }
 
-        .tab-btn {
-            flex: 1;
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            color: var(--tg-theme-text-color, #000000);
-            border: none;
-            padding: 10px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
+    /* ---- Счёт ---- */
+    .account-card{
+        background: linear-gradient(160deg, var(--surface-2), var(--surface));
+        border: 1px solid var(--border);
+        padding: 18px 16px;
+        border-radius: 14px;
+        margin-bottom: 18px;
+        position: relative;
+        overflow: hidden;
+    }
+    .account-card::before{
+        content: "";
+        position: absolute; top: -30%; right: -20%;
+        width: 160px; height: 160px;
+        background: radial-gradient(circle, rgba(201,169,97,0.15), transparent 70%);
+    }
+    .account-label{
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-dim);
+        margin-bottom: 6px;
+    }
+    .account-amount{
+        font-family: var(--mono);
+        font-size: 30px;
+        font-weight: 700;
+        color: var(--gold-bright);
+        letter-spacing: 0.5px;
+    }
+    .account-amount.negative{ color: var(--red); }
+    .account-sub{
+        font-size: 11px;
+        color: var(--text-dim);
+        margin-top: 4px;
+    }
+    .recap-button{
+        display: none;
+        margin: 12px auto 0 auto;
+        background: var(--red);
+        color: #fff;
+        border: none;
+        padding: 9px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+    }
 
-        .tab-btn.active {
-            background: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, #ffffff);
-        }
+    /* ---- Корзины активов ---- */
+    .baskets-grid{
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+    .basket-item{
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color .15s, transform .15s;
+    }
+    .basket-item:hover{ transform: translateY(-2px); }
+    .basket-item.selected{ border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+    .basket-icon{ font-size: 30px; margin-bottom: 6px; }
+    .basket-name{ font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+    .basket-desc{ font-size: 10.5px; color: var(--text-dim); margin-bottom: 6px; }
+    .basket-price{ font-family: var(--mono); color: var(--gold); font-size: 13px; font-weight: 600; }
 
-        .page {
-            display: none;
-        }
+    /* ---- Маржинальная сделка ---- */
+    .margin-zone{
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 18px;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 16px;
+    }
+    .margin-slots{ display: flex; justify-content: space-around; align-items: center; margin-bottom: 14px; }
+    .margin-slot{
+        width: 66px; height: 66px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 26px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        position: relative;
+    }
+    .margin-slot .rating-tag{
+        position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
+        font-family: var(--mono); font-size: 9px; font-weight: 700;
+        padding: 1px 5px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border);
+    }
+    .margin-prices{
+        display: flex; justify-content: space-between;
+        font-size: 11.5px; color: var(--text-dim); margin: 14px 0 10px 0; font-family: var(--mono);
+    }
 
-        .page.active {
-            display: block;
-        }
+    .rating-scale{
+        display: flex; justify-content: space-between;
+        background: var(--surface-2);
+        padding: 5px; border-radius: 20px; margin: 12px 0; gap: 4px;
+    }
+    .rating-step{
+        flex: 1; font-size: 10px; padding: 5px 2px; border-radius: 12px;
+        color: var(--text-dim); font-weight: 700; text-align: center;
+        font-family: var(--mono);
+        border: 1px solid transparent;
+    }
+    .r-CCC{ background: #262b35 !important; border-color: #3a4150; color: #9aa3b2; }
+    .r-B{ background: rgba(31,174,100,0.15) !important; border-color: var(--green); color: var(--green); }
+    .r-BBB{ background: rgba(59,130,246,0.15) !important; border-color: #3B82F6; color: #7fadf7; }
+    .r-A{ background: rgba(168,85,247,0.15) !important; border-color: #A855F7; color: #c495fb; }
+    .r-AAA{
+        background: rgba(201,169,97,0.18) !important; border-color: var(--gold); color: var(--gold-bright);
+        animation: pulse-gold 2s infinite ease-in-out;
+    }
+    @keyframes pulse-gold{
+        0%{ box-shadow: 0 0 5px rgba(201,169,97,0.5); }
+        50%{ box-shadow: 0 0 13px rgba(201,169,97,0.8); }
+        100%{ box-shadow: 0 0 5px rgba(201,169,97,0.5); }
+    }
+    .rating-step.active{ transform: scale(1.06); }
 
-        /* Общие стили баланса */
-        .balance {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            padding: 16px;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
+    .margin-chance{ font-size: 15px; font-weight: 700; margin: 8px 0; color: var(--gold-bright); font-family: var(--mono); }
+    .margin-warning{ font-size: 10.5px; color: var(--text-dim); margin-top: 4px; }
 
-        .balance-amount {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--tg-theme-button-color, #3390ec);
-        }
+    /* ---- Портфель ---- */
+    .portfolio{ background: var(--surface); border: 1px solid var(--border); padding: 16px; border-radius: 12px; margin-bottom: 16px; }
+    .portfolio h3{ margin: 0 0 12px 0; text-align: center; font-size: 14px; letter-spacing: 0.3px; color: var(--text-dim); text-transform: uppercase; }
+    .portfolio-grid{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .portfolio-item{
+        border-radius: 9px; padding: 6px; text-align: center; font-size: 24px;
+        position: relative; cursor: pointer; aspect-ratio: 1;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+    }
+    .portfolio-item.selected-margin{ border-color: var(--gold) !important; transform: scale(0.96); }
+    .portfolio-item .close-pos{
+        position: absolute; bottom: 0; left: 0; right: 0;
+        background: rgba(0,0,0,0.75); color: #fff; font-size: 8px;
+        padding: 2px 0; border-radius: 0 0 7px 7px; font-family: var(--mono);
+        opacity: 0; transition: opacity .15s;
+    }
+    .portfolio-item:hover .close-pos{ opacity: 1; }
+    .empty-portfolio{ grid-column: 1 / -1; text-align: center; color: var(--text-dim); font-size: 12px; padding: 10px 0; }
 
-        /* Стили вкладки кейсов */
-        .cases-container {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
-        }
+    /* ---- Кнопки ---- */
+    .action-button{
+        width: 100%;
+        background: linear-gradient(135deg, var(--gold), #A9853F);
+        color: #14110A;
+        border: none; padding: 14px; border-radius: 10px;
+        font-size: 15px; font-weight: 700; cursor: pointer;
+        letter-spacing: 0.2px;
+    }
+    .action-button:disabled{ opacity: 0.4; cursor: not-allowed; background: var(--surface-2); color: var(--text-dim); }
 
-        .case-item {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            border-radius: 10px;
-            padding: 12px;
-            text-align: center;
-            cursor: pointer;
-            transition: transform 0.2s;
-            border: 2px solid transparent;
-        }
+    /* ---- Уведомления ---- */
+    .notice{
+        border: 1px solid var(--border);
+        padding: 11px; border-radius: 9px; margin-top: 14px;
+        text-align: center; font-weight: 600; font-size: 13px; display: none;
+    }
+    .notice.win{ color: var(--green); background: rgba(31,174,100,0.08); }
+    .notice.lose{ color: var(--red); background: rgba(229,72,77,0.08); }
+    .notice.info{ color: var(--gold-bright); background: rgba(201,169,97,0.08); }
 
-        .case-item:hover {
-            transform: scale(1.02);
-        }
-
-        .case-image {
-            font-size: 40px;
-            margin-bottom: 8px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .case-name {
-            font-weight: bold;
-            margin-bottom: 4px;
-            font-size: 14px;
-        }
-
-        .case-price {
-            color: var(--tg-theme-button-color, #3390ec);
-            font-size: 13px;
-        }
-
-        /* Стили вкладки Апгрейда */
-        .upgrade-zone {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .upgrade-slots {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .upgrade-slot {
-            width: 70px;
-            height: 70px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            position: relative;
-            background: #ffffff;
-            border: 2px solid rgba(0,0,0,0.1);
-        }
-
-        .upgrade-prices {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            margin: 10px 0;
-            color: var(--tg-theme-text-color, #000000);
-            padding: 0 10px;
-        }
-
-        /* Горизонтальная шкала редкостей */
-        .rarity-timeline {
-            display: flex;
-            justify-content: space-between;
-            background: rgba(0,0,0,0.05);
-            padding: 6px;
-            border-radius: 20px;
-            margin: 15px 0;
-            gap: 4px;
-        }
-
-        .timeline-step {
-            flex: 1;
-            font-size: 10px;
-            padding: 4px 2px;
-            border-radius: 12px;
-            color: #777;
-            font-weight: bold;
-            text-align: center;
-            background: transparent;
-            border: 1px solid transparent;
-        }
-
-        /* Активные состояния подсветок на шкале и предметах */
-        .q-common { background: #ffffff !important; border-color: #ccc; color: #333; }
-        .q-uncommon { background: #e2fcd4 !important; border-color: #34c759; color: #248a3d; box-shadow: 0 0 8px rgba(52,199,89,0.2); }
-        .q-rare { background: #d4e2fc !important; border-color: #007aff; color: #0056b3; box-shadow: 0 0 8px rgba(0,122,255,0.2); }
-        .q-epic { background: #f3d4fc !important; border-color: #af52de; color: #7b399c; box-shadow: 0 0 8px rgba(175,82,222,0.2); }
-        .q-legendary { 
-            background: #ffe9d4 !important; 
-            border-color: #ff9500; 
-            color: #b36b00;
-            animation: pulse-orange 2s infinite ease-in-out;
-        }
-
-        .timeline-step.active {
-            transform: scale(1.05);
-            box-shadow: inset 0 0 4px rgba(0,0,0,0.2);
-        }
-
-        @keyframes pulse-orange {
-            0% { box-shadow: 0 0 6px #ff9500; }
-            50% { box-shadow: 0 0 14px #ff9500; }
-            100% { box-shadow: 0 0 6px #ff9500; }
-        }
-
-        .upgrade-chance {
-            font-size: 16px;
-            font-weight: bold;
-            margin: 10px 0;
-            color: var(--tg-theme-button-color, #3390ec);
-        }
-
-        /* Стили Инвентаря */
-        .inventory {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            padding: 16px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        .inventory h3 {
-            margin: 0 0 12px 0;
-            text-align: center;
-        }
-
-        .inventory-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-        }
-
-        .inventory-item {
-            border-radius: 8px;
-            padding: 8px;
-            text-align: center;
-            font-size: 28px;
-            position: relative;
-            cursor: pointer;
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid rgba(0,0,0,0.05);
-        }
-
-        .inventory-item.selected-for-upgrade {
-            border-color: #3390ec !important;
-            transform: scale(0.95);
-        }
-
-        .inventory-item .sell-button {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            font-size: 8px;
-            padding: 2px 0;
-            border-radius: 0 0 6px 6px;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .inventory-item:hover .sell-button {
-            opacity: 1;
-        }
-
-        /* Кнопки действий */
-        .action-button {
-            width: 100%;
-            background: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            border: none;
-            padding: 14px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .action-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .credit-button {
-            display: none;
-            margin: 10px auto 0 auto;
-            background: #ff3b30;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        /* Результаты */
-        .result {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 15px;
-            text-align: center;
-            font-weight: bold;
-            display: none;
-        }
-        .win { color: #34c759; }
-        .lose { color: #ff3b30; }
-
-        /* Рулетка анимации кейсов */
-        .case-opening-animation {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .case-items-container {
-            display: flex;
-            width: 320px;
-            height: 100px;
-            position: relative;
-            overflow: hidden;
-            background: #1a1a1a;
-            border-radius: 10px;
-        }
-
-        .case-items-wrapper {
-            display: flex;
-            position: absolute;
-            left: 0;
-        }
-
-        .case-item-animation {
-            min-width: 100px;
-            height: 100px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 40px;
-            flex-shrink: 0;
-            border-radius: 8px;
-            margin: 0 2px;
-        }
-
-        .case-selector {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100px;
-            height: 100%;
-            border: 3px solid #3390ec;
-            box-sizing: border-box;
-            pointer-events: none;
-            z-index: 2;
-        }
-    </style>
+    /* ---- Анимация исполнения ордера ---- */
+    .order-overlay{
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(4,5,8,0.9); display: none; flex-direction: column;
+        justify-content: center; align-items: center; z-index: 1000; gap: 10px;
+    }
+    .order-label{ font-size: 12px; color: var(--text-dim); font-family: var(--mono); letter-spacing: 0.5px; }
+    .roll-container{
+        display: flex; width: 320px; height: 92px; position: relative;
+        overflow: hidden; background: #0D1017; border-radius: 10px; border: 1px solid var(--border);
+    }
+    .roll-wrapper{ display: flex; position: absolute; left: 0; }
+    .roll-item{
+        min-width: 100px; height: 92px; display: flex; flex-direction: column;
+        justify-content: center; align-items: center; font-size: 30px;
+        flex-shrink: 0; border-radius: 8px; margin: 0 2px; gap: 2px;
+    }
+    .roll-item span{ font-size: 9px; font-family: var(--mono); font-weight: 700; }
+    .roll-selector{
+        position: absolute; left: 50%; transform: translateX(-50%);
+        width: 100px; height: 100%; border: 2px solid var(--gold);
+        box-sizing: border-box; pointer-events: none; z-index: 2;
+        box-shadow: 0 0 12px rgba(201,169,97,0.5);
+    }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('cases-page')">📦 Кейсы</button>
-            <button class="tab-btn" onclick="switchTab('upgrade-page')">⚡ Апгрейд</button>
-        </div>
+<div class="container">
 
-        <div class="balance">
-            <div>Ваш баланс:</div>
-            <div class="balance-amount" id="globalBalance">10000 руб.</div>
-            <button class="credit-button" id="creditButton">Взять бонус (1000 руб.)</button>
-        </div>
+    <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
 
-        <div id="cases-page" class="page active">
-            <div class="cases-container">
-                <div class="case-item" data-case="flea" data-price="100">
-                    <div class="case-image">🛖</div>
-                    <div class="case-name">Барахолка</div>
-                    <div class="case-price">100 руб.</div>
-                </div>
-                <div class="case-item" data-case="market" data-price="500">
-                    <div class="case-image">🏪</div>
-                    <div class="case-name">Маркетплейс</div>
-                    <div class="case-price">500 руб.</div>
-                </div>
-                <div class="case-item" data-case="cars" data-price="2500">
-                    <div class="case-image">🏎️</div>
-                    <div class="case-name">Автосалон</div>
-                    <div class="case-price">2500 руб.</div>
-                </div>
-                <div class="case-item" data-case="elite" data-price="10000">
-                    <div class="case-image">👑</div>
-                    <div class="case-name">Элита</div>
-                    <div class="case-price">10000 руб.</div>
-                </div>
-            </div>
-            <button class="action-button" id="openCaseButton" disabled>Выберите кейс</button>
-        </div>
-
-        <div id="upgrade-page" class="page">
-            <div class="upgrade-zone">
-                <div class="upgrade-slots">
-                    <div class="upgrade-slot" id="slot-input">❓</div>
-                    <div style="font-size: 24px;">➡️</div>
-                    <div class="upgrade-slot" id="slot-output">❓</div>
-                </div>
-                
-                <div class="upgrade-prices">
-                    <span id="price-input-label">Текущая цена: 0 руб.</span>
-                    <span id="price-output-label">При успехе: 0 руб.</span>
-                </div>
-
-                <div class="rarity-timeline">
-                    <div class="timeline-step" id="step-common">Обыч.</div>
-                    <div class="timeline-step" id="step-uncommon">Необ.</div>
-                    <div class="timeline-step" id="step-rare">Редк.</div>
-                    <div class="timeline-step" id="step-epic">Миф.</div>
-                    <div class="timeline-step" id="step-legendary">Лег.</div>
-                </div>
-
-                <div class="upgrade-chance" id="upgradeChance">Шанс успеха: 0%</div>
-            </div>
-            <button class="action-button" id="upgradeButton" disabled>Улучшить предмет</button>
-        </div>
-
-        <div class="inventory">
-            <h3>Ваш Инвентарь</h3>
-            <div class="inventory-grid" id="inventoryGrid"></div>
-        </div>
-
-        <div class="result" id="resultNotice"></div>
-
-        <div class="case-opening-animation" id="caseOpeningAnimation">
-            <div class="case-items-container" id="caseItemsContainer"></div>
-        </div>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('baskets-page', event)">📊 Инвестиции</button>
+        <button class="tab-btn" onclick="switchTab('margin-page', event)">📈 Маржа</button>
     </div>
 
-    <script>
-        let tg = window.Telegram.WebApp;
-        let selectedCase = null;
-        let inventory = [];
-        let currentBalance = 10000;
-        let upgradeIndex = null;
+    <div class="account-card">
+        <div class="account-label">Торговый счёт</div>
+        <div class="account-amount" id="globalBalance">$10,000</div>
+        <div class="account-sub" id="accountSub">Статус: активен</div>
+        <button class="recap-button" id="recapButton">Экстренная докапитализация (+$1,000)</button>
+    </div>
 
-        // Порядковая матрица качеств и их коэффициентов стоимости
-        const QUALITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-        const QUALITY_MULTIPLIERS = { common: 1, uncommon: 2, rare: 5, epic: 10, legendary: 25 };
+    <!-- СТРАНИЦА: ИНВЕСТИЦИИ -->
+    <div id="baskets-page" class="page active">
+        <div class="baskets-grid">
+            <div class="basket-item" data-basket="spot" data-price="120">
+                <div class="basket-icon">🪙</div>
+                <div class="basket-name">Спот-портфель</div>
+                <div class="basket-desc">Малая капитализация</div>
+                <div class="basket-price">$120</div>
+            </div>
+            <div class="basket-item" data-basket="liquid" data-price="600">
+                <div class="basket-icon">📊</div>
+                <div class="basket-name">Ликвидный портфель</div>
+                <div class="basket-desc">Средняя капитализация</div>
+                <div class="basket-price">$600</div>
+            </div>
+            <div class="basket-item" data-basket="growth" data-price="3000">
+                <div class="basket-icon">📈</div>
+                <div class="basket-name">Портфель роста</div>
+                <div class="basket-desc">Голубые фишки</div>
+                <div class="basket-price">$3,000</div>
+            </div>
+            <div class="basket-item" data-basket="fund" data-price="12000">
+                <div class="basket-icon">🏦</div>
+                <div class="basket-name">Институц. фонд</div>
+                <div class="basket-desc">Закрытая подписка</div>
+                <div class="basket-price">$12,000</div>
+            </div>
+        </div>
+        <button class="action-button" id="investButton" disabled>Выберите портфель</button>
+    </div>
 
-        // Базовые предметы по категориям кейсов
-        const CASE_POOLS = {
-            flea: [
-                { name: 'Носки', emoji: '🧦', baseValue: 30 },
-                { name: 'Провод', emoji: '🔌', baseValue: 50 },
-                { name: 'Старое радио', emoji: '📻', baseValue: 70 },
-                { name: 'Телевизор', emoji: '📺', baseValue: 120 },
-                { name: 'Приставка', emoji: '🕹', baseValue: 200 }
-            ],
-            market: [
-                { name: 'Кроссовки', emoji: '👟', baseValue: 250 },
-                { name: 'Наушники', emoji: '🎧', baseValue: 350 },
-                { name: 'Смарт-часы', emoji: '⌚', baseValue: 500 },
-                { name: 'Телефон', emoji: '📱', baseValue: 750 },
-                { name: 'Ноутбук', emoji: '💻', baseValue: 1200 }
-            ],
-            cars: [
-                { name: 'Скутер', emoji: '🛵', baseValue: 1500 },
-                { name: 'Мотоцикл', emoji: '🏍', baseValue: 2500 },
-                { name: 'Б/У Седан', emoji: '🚗', baseValue: 4000 },
-                { name: 'Внедорожник', emoji: '🚙', baseValue: 6500 },
-                { name: 'Спорткар', emoji: '🏎', baseValue: 11000 }
-            ],
-            elite: [
-                { name: 'Алмаз', emoji: '💎', baseValue: 15000 },
-                { name: 'Яхта', emoji: '🛥', baseValue: 25000 },
-                { name: 'Пентхаус', emoji: '🏢', baseValue: 45000 },
-                { name: 'Замок', emoji: '🏰', baseValue: 80000 },
-                { name: 'Корона', emoji: '👑', baseValue: 150000 }
-            ]
+    <!-- СТРАНИЦА: МАРЖИНАЛЬНАЯ СДЕЛКА -->
+    <div id="margin-page" class="page">
+        <div class="margin-zone">
+            <div class="margin-slots">
+                <div class="margin-slot" id="slot-input">❓</div>
+                <div style="font-size: 20px; color: var(--text-dim);">➜</div>
+                <div class="margin-slot" id="slot-output">❓</div>
+            </div>
+            <div class="margin-prices">
+                <span id="price-input-label">Текущая оценка: $0</span>
+                <span id="price-output-label">При исполнении: $0</span>
+            </div>
+            <div class="rating-scale">
+                <div class="rating-step" id="step-CCC">CCC</div>
+                <div class="rating-step" id="step-B">B</div>
+                <div class="rating-step" id="step-BBB">BBB</div>
+                <div class="rating-step" id="step-A">A</div>
+                <div class="rating-step" id="step-AAA">AAA</div>
+            </div>
+            <div class="margin-chance" id="marginChance">Вероятность исполнения: 0%</div>
+            <div class="margin-warning">При неудаче позиция подлежит принудительной ликвидации</div>
+        </div>
+        <button class="action-button" id="marginButton" disabled>Открыть маржинальную сделку</button>
+    </div>
+
+    <!-- ПОРТФЕЛЬ (ОБЩИЙ) -->
+    <div class="portfolio">
+        <h3>Открытые позиции</h3>
+        <div class="portfolio-grid" id="portfolioGrid"></div>
+    </div>
+
+    <div class="notice" id="noticeBox"></div>
+
+    <div class="order-overlay" id="orderOverlay">
+        <div class="order-label">ИСПОЛНЕНИЕ ОРДЕРА...</div>
+        <div class="roll-container" id="rollContainer"></div>
+    </div>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   КОНФИГУРАЦИЯ
+   ========================================================= */
+
+const RATING_ORDER = ['CCC', 'B', 'BBB', 'A', 'AAA'];
+
+const RATING_LABELS = {
+    CCC: 'Спекулятивный',
+    B:   'Волатильный',
+    BBB: 'Стабильный',
+    A:   'Надёжный',
+    AAA: 'Суверенный'
+};
+
+// Множитель выплаты за каждый рейтинговый класс (ужесточённая шкала)
+const RATING_MULTIPLIER = { CCC: 1, B: 1.8, BBB: 4, A: 8, AAA: 18 };
+
+// Вероятность успешного повышения рейтинга при марж. сделке (ужесточено)
+const MARGIN_SUCCESS_CHANCE = { CCC: 65, B: 45, BBB: 28, A: 12 };
+
+// Комиссия биржи, удерживаемая при закрытии позиции
+const EXCHANGE_FEE_RATE = 0.04;
+
+const ASSET_POOLS = {
+    spot: {
+        label: 'Спот-портфель', icon: '🪙', price: 120,
+        assets: [
+            { ticker: 'DOGE', name: 'Dogecoin',  baseValue: 25 },
+            { ticker: 'TRX',  name: 'Tron',       baseValue: 40 },
+            { ticker: 'XRP',  name: 'Ripple',     baseValue: 60 },
+            { ticker: 'ADA',  name: 'Cardano',    baseValue: 100 },
+            { ticker: 'ATOM', name: 'Cosmos',     baseValue: 170 }
+        ]
+    },
+    liquid: {
+        label: 'Ликвидный портфель', icon: '📊', price: 600,
+        assets: [
+            { ticker: 'TON',  name: 'Toncoin',    baseValue: 220 },
+            { ticker: 'SOL',  name: 'Solana',     baseValue: 300 },
+            { ticker: 'BNB',  name: 'BNB',        baseValue: 430 },
+            { ticker: 'AVAX', name: 'Avalanche',  baseValue: 650 },
+            { ticker: 'LINK', name: 'Chainlink',  baseValue: 1000 }
+        ]
+    },
+    growth: {
+        label: 'Портфель роста', icon: '📈', price: 3000,
+        assets: [
+            { ticker: 'ETH',  name: 'Ethereum',   baseValue: 1300 },
+            { ticker: 'AAPL', name: 'Apple Inc.', baseValue: 2200 },
+            { ticker: 'TSLA', name: 'Tesla Inc.', baseValue: 3600 },
+            { ticker: 'NVDA', name: 'NVIDIA',     baseValue: 5800 },
+            { ticker: 'BTC',  name: 'Bitcoin',    baseValue: 9500 }
+        ]
+    },
+    fund: {
+        label: 'Институц. фонд', icon: '🏦', price: 12000,
+        assets: [
+            { ticker: 'BRK.A', name: 'Berkshire Hathaway', baseValue: 13000 },
+            { ticker: 'GOLD',  name: 'Золотой резерв',      baseValue: 22000 },
+            { ticker: 'SWF',   name: 'Суверенный фонд',     baseValue: 40000 },
+            { ticker: 'SPX',   name: 'Индекс S&P 500',      baseValue: 70000 },
+            { ticker: 'PE.1',  name: 'Контрольный пакет',   baseValue: 130000 }
+        ]
+    }
+};
+
+// Тикеры для декоративной бегущей строки
+const TICKER_SYMBOLS = ['BTC','ETH','TON','SOL','AAPL','TSLA','NVDA','BNB','XRP','SPX'];
+
+// Периодические рыночные события, влияющие на денежный остаток счёта
+const MARKET_EVENTS = [
+    { weight: 55, type: 'neutral' },
+    { weight: 15, type: 'bear',  label: 'Рынок штормит', min: 0.06, max: 0.18 },
+    { weight: 20, type: 'bull',  label: 'Локальное ралли', min: 0.03, max: 0.09 },
+    { weight: 10, type: 'tax',   label: 'Комиссия за обслуживание счёта', min: 15, max: 90 }
+];
+
+const STORAGE_KEY_BALANCE   = 'tt_account_balance';
+const STORAGE_KEY_PORTFOLIO = 'tt_open_positions';
+
+/* =========================================================
+   СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+   ========================================================= */
+
+const state = {
+    tg: null,
+    selectedBasket: null,
+    portfolio: [],
+    balance: 10000,
+    marginIndex: null
+};
+
+/* =========================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ========================================================= */
+
+function init() {
+    try {
+        state.tg = window.Telegram ? window.Telegram.WebApp : null;
+        if (state.tg) {
+            state.tg.enableClosingConfirmation();
+            state.tg.expand();
+        }
+        loadState();
+        renderBalance();
+        renderPortfolio();
+        buildTicker();
+        bindBasketSelection();
+        bindStaticButtons();
+        setInterval(runMarketTick, 20000);
+        setInterval(refreshTicker, 4000);
+    } catch (err) {
+        console.error('Ошибка инициализации терминала:', err);
+    }
+}
+
+function loadState() {
+    try {
+        const savedBalance = localStorage.getItem(STORAGE_KEY_BALANCE);
+        if (savedBalance !== null) state.balance = parseFloat(savedBalance);
+    } catch (err) {
+        console.error('Не удалось прочитать баланс счёта:', err);
+    }
+    try {
+        const savedPortfolio = localStorage.getItem(STORAGE_KEY_PORTFOLIO);
+        state.portfolio = savedPortfolio ? JSON.parse(savedPortfolio) : [];
+    } catch (err) {
+        console.error('Не удалось прочитать портфель:', err);
+        state.portfolio = [];
+    }
+}
+
+function persistBalance() {
+    try { localStorage.setItem(STORAGE_KEY_BALANCE, String(state.balance)); }
+    catch (err) { console.error('Не удалось сохранить баланс:', err); }
+}
+
+function persistPortfolio() {
+    try { localStorage.setItem(STORAGE_KEY_PORTFOLIO, JSON.stringify(state.portfolio)); }
+    catch (err) { console.error('Не удалось сохранить портфель:', err); }
+}
+
+/* =========================================================
+   БЕГУЩАЯ СТРОКА КОТИРОВОК (декоративный слой)
+   ========================================================= */
+
+function buildTicker() {
+    const track = document.getElementById('tickerTrack');
+    const items = [];
+    for (let i = 0; i < 2; i++) {
+        TICKER_SYMBOLS.forEach(sym => items.push(makeTickerItem(sym)));
+    }
+    track.innerHTML = items.join('');
+}
+
+function makeTickerItem(symbol) {
+    const change = (Math.random() * 6 - 2.5).toFixed(2);
+    const up = parseFloat(change) >= 0;
+    const arrow = up ? '📈' : '📉';
+    const cls = up ? 't-up' : 't-down';
+    const sign = up ? '+' : '';
+    return `<span class="ticker-item"><b>${symbol}</b> ${arrow} <span class="${cls}">${sign}${change}%</span></span>`;
+}
+
+function refreshTicker() {
+    try { buildTicker(); } catch (err) { console.error('Ошибка обновления котировок:', err); }
+}
+
+/* =========================================================
+   НАВИГАЦИЯ ПО ВКЛАДКАМ
+   ========================================================= */
+
+function switchTab(pageId, evt) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
+    resetMarginSelection();
+    renderPortfolio();
+    hideNotice();
+}
+
+/* =========================================================
+   СЧЁТ / БАЛАНС
+   ========================================================= */
+
+function renderBalance() {
+    const el = document.getElementById('globalBalance');
+    const formatted = formatMoney(state.balance);
+    el.textContent = formatted;
+    el.classList.toggle('negative', state.balance < 0);
+
+    const sub = document.getElementById('accountSub');
+    sub.textContent = state.balance < 0
+        ? 'Статус: маржинальное требование не исполнено'
+        : 'Статус: активен';
+
+    document.getElementById('recapButton').style.display = state.balance <= 0 ? 'block' : 'none';
+}
+
+function adjustBalance(delta) {
+    state.balance = round2(state.balance + delta);
+    persistBalance();
+    renderBalance();
+}
+
+function formatMoney(value) {
+    const sign = value < 0 ? '-' : '';
+    return sign + '$' + Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
+}
+
+function round2(value) {
+    return Math.round(value * 100) / 100;
+}
+
+/* =========================================================
+   ПОРТФЕЛЬ (ОТКРЫТЫЕ ПОЗИЦИИ)
+   ========================================================= */
+
+function renderPortfolio() {
+    persistPortfolio();
+    const grid = document.getElementById('portfolioGrid');
+    grid.innerHTML = '';
+
+    if (state.portfolio.length === 0) {
+        grid.innerHTML = '<div class="empty-portfolio">Открытых позиций нет</div>';
+        return;
+    }
+
+    state.portfolio.forEach((position, index) => {
+        const cell = document.createElement('div');
+        cell.className = `portfolio-item r-${position.rating}`;
+        if (index === state.marginIndex) cell.classList.add('selected-margin');
+        cell.textContent = position.icon;
+
+        const closeBtn = document.createElement('div');
+        closeBtn.className = 'close-pos';
+        closeBtn.textContent = `${position.ticker}`;
+        closeBtn.onclick = (e) => { e.stopPropagation(); closePosition(index); };
+
+        cell.appendChild(closeBtn);
+        cell.onclick = () => {
+            if (document.getElementById('margin-page').classList.contains('active')) {
+                selectForMargin(index);
+            }
+        };
+        grid.appendChild(cell);
+    });
+}
+
+function closePosition(index) {
+    try {
+        if (index === state.marginIndex) resetMarginSelection();
+        const position = state.portfolio[index];
+        const grossValue = position.baseValue * RATING_MULTIPLIER[position.rating];
+
+        const volatility = rollVolatility();
+        const afterVolatility = grossValue * volatility.factor;
+        const fee = afterVolatility * EXCHANGE_FEE_RATE;
+        const netPayout = round2(afterVolatility - fee);
+
+        state.portfolio.splice(index, 1);
+        renderPortfolio();
+        adjustBalance(netPayout);
+
+        const feeText = `(комиссия биржи $${fee.toFixed(2)})`;
+        if (volatility.event) {
+            showNotice(`${volatility.event} — позиция закрыта: ${formatMoney(netPayout)} ${feeText}`, netPayout >= grossValue * 0.5);
+        } else {
+            showNotice(`Позиция закрыта: ${formatMoney(netPayout)} ${feeText}`, true);
+        }
+    } catch (err) {
+        console.error('Ошибка закрытия позиции:', err);
+        showNotice('Ошибка исполнения ордера на закрытие позиции', false);
+    }
+}
+
+// Волатильность, применяемая к цене закрытия конкретной позиции
+function rollVolatility() {
+    const roll = Math.random();
+    if (roll < 0.12) {
+        // Резкая просадка сектора
+        const drop = 0.55 + Math.random() * 0.20; // выплата 55-75% от справедливой стоимости
+        return { factor: drop, event: '⚠️ Рынок штормит' };
+    }
+    if (roll < 0.20) {
+        // Локальный памп
+        const bump = 1.10 + Math.random() * 0.20; // 110-130%
+        return { factor: bump, event: '🚀 Рыночное ралли' };
+    }
+    // Обычный спред/шум рынка
+    const noise = 0.92 + Math.random() * 0.16; // 92-108%
+    return { factor: noise, event: null };
+}
+
+/* =========================================================
+   ПОКУПКА ПОРТФЕЛЯ (АНАЛОГ "ОТКРЫТИЯ КЕЙСА")
+   ========================================================= */
+
+function bindBasketSelection() {
+    document.querySelectorAll('.basket-item').forEach(item => {
+        item.addEventListener('click', function () {
+            state.selectedBasket = this.dataset.basket;
+            const price = parseInt(this.dataset.price, 10);
+            const investBtn = document.getElementById('investButton');
+            investBtn.disabled = false;
+            investBtn.textContent = `Инвестировать $${price.toLocaleString('en-US')}`;
+            document.querySelectorAll('.basket-item').forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+        });
+    });
+}
+
+function bindStaticButtons() {
+    document.getElementById('investButton').addEventListener('click', executeInvestment);
+    document.getElementById('marginButton').addEventListener('click', executeMarginTrade);
+    document.getElementById('recapButton').addEventListener('click', executeRecapitalization);
+}
+
+function executeInvestment() {
+    try {
+        if (!state.selectedBasket) return;
+        const pool = ASSET_POOLS[state.selectedBasket];
+        const price = pool.price;
+
+        if (state.balance < price) {
+            showNotice('Недостаточно средств на счёте для этой сделки', false);
+            return;
+        }
+
+        const investBtn = document.getElementById('investButton');
+        investBtn.disabled = true;
+
+        const baseAsset = pool.assets[Math.floor(Math.random() * pool.assets.length)];
+        const rating = rollRating();
+        const wonPosition = {
+            ticker: baseAsset.ticker,
+            name: baseAsset.name,
+            baseValue: baseAsset.baseValue,
+            icon: pool.icon,
+            rating: rating
         };
 
-        if (tg) {
-            tg.enableClosingConfirmation();
-            tg.expand();
-            if(localStorage.getItem('casino_balance_rub')) currentBalance = parseInt(localStorage.getItem('casino_balance_rub'));
-            if(localStorage.getItem('casino_inventory_rub')) {
-                try { inventory = JSON.parse(localStorage.getItem('casino_inventory_rub')); } catch(e) { inventory = []; }
-            }
-            updateBalance(currentBalance);
-            updateInventory();
-        }
-
-        function switchTab(pageId) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
-            event.currentTarget.classList.add('active');
-            resetUpgrade();
-            updateInventory();
-            document.getElementById('resultNotice').style.display = 'none';
-        }
-
-        function updateBalance(newBalance) {
-            currentBalance = newBalance;
-            localStorage.setItem('casino_balance_rub', currentBalance);
-            document.getElementById('globalBalance').textContent = currentBalance + ' руб.';
-            document.getElementById('creditButton').style.display = currentBalance <= 0 ? 'block' : 'none';
-        }
-
-        function updateInventory() {
-            localStorage.setItem('casino_inventory_rub', JSON.stringify(inventory));
-            const grid = document.getElementById('inventoryGrid');
-            grid.innerHTML = '';
-            
-            if (inventory.length === 0) {
-                grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--tg-theme-hint-color,#999999);">Инвентарь пуст</div>';
-                return;
-            }
-            
-            inventory.forEach((item, index) => {
-                const el = document.createElement('div');
-                el.className = `inventory-item q-${item.quality}`;
-                if(index === upgradeIndex) el.classList.add('selected-for-upgrade');
-                el.textContent = item.emoji;
-                
-                const totalPrice = item.baseValue * QUALITY_MULTIPLIERS[item.quality];
-                
-                const sellBtn = document.createElement('div');
-                sellBtn.className = 'sell-button';
-                sellBtn.textContent = `${totalPrice}р.`;
-                sellBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    sellItem(index);
-                };
-                
-                el.appendChild(sellBtn);
-                el.onclick = () => {
-                    if(document.getElementById('upgrade-page').classList.contains('active')) {
-                        selectForUpgrade(index);
-                    }
-                };
-                grid.appendChild(el);
-            });
-        }
-
-        function sellItem(index) {
-            if(index === upgradeIndex) resetUpgrade();
-            const reward = inventory[index].baseValue * QUALITY_MULTIPLIERS[inventory[index].quality];
-            inventory.splice(index, 1);
-            updateInventory();
-            updateBalance(currentBalance + reward);
-            showNotice(`Продано за ${reward} руб.!`, true);
-        }
-
-        /* --- ЛОГИКА КЕЙСОВ --- */
-        document.querySelectorAll('.case-item').forEach(item => {
-            item.addEventListener('click', function() {
-                selectedCase = this.dataset.case;
-                const price = this.dataset.price;
-                document.getElementById('openCaseButton').disabled = false;
-                document.getElementById('openCaseButton').textContent = `Открыть за ${price} руб.`;
-                document.querySelectorAll('.case-item').forEach(c => c.style.borderColor = 'transparent');
-                this.style.borderColor = 'var(--tg-theme-button-color, #3390ec)';
-            });
+        playOrderAnimation(wonPosition, () => {
+            adjustBalance(-price);
+            state.portfolio.push(wonPosition);
+            renderPortfolio();
+            showNotice(`Открыта позиция: ${wonPosition.ticker} [${RATING_LABELS[wonPosition.rating]}, ${wonPosition.rating}]`, true);
+            investBtn.disabled = false;
         });
+    } catch (err) {
+        console.error('Ошибка исполнения инвестиции:', err);
+        showNotice('Ошибка исполнения ордера', false);
+    }
+}
 
-        document.getElementById('openCaseButton').addEventListener('click', () => {
-            if (!selectedCase) return;
-            const price = parseInt(selectedCase === 'flea' ? 100 : selectedCase === 'market' ? 500 : selectedCase === 'cars' ? 2500 : 10000);
-            
-            if (currentBalance < price) {
-                showNotice('Недостаточно баланса!', false);
-                return;
-            }
-            
-            document.getElementById('openCaseButton').disabled = true;
-            
-            const pool = CASE_POOLS[selectedCase];
-            const baseItem = pool[Math.floor(Math.random() * pool.length)];
-            
-            // Расчет качества при выпадении (Шансы: Common 50%, Uncommon 25%, Rare 15%, Epic 8%, Legendary 2%)
-            const roll = Math.random() * 100;
-            let quality = 'common';
-            if (roll > 50 && roll <= 75) quality = 'uncommon';
-            else if (roll > 75 && roll <= 90) quality = 'rare';
-            else if (roll > 90 && roll <= 98) quality = 'epic';
-            else if (roll > 98) quality = 'legendary';
+function rollRating() {
+    const roll = Math.random() * 100;
+    if (roll <= 48) return 'CCC';
+    if (roll <= 75) return 'B';
+    if (roll <= 91) return 'BBB';
+    if (roll <= 98) return 'A';
+    return 'AAA';
+}
 
-            const wonItem = { ...baseItem, quality: quality };
-            
-            const animContainer = document.getElementById('caseOpeningAnimation');
-            const wrapperContainer = document.getElementById('caseItemsContainer');
-            wrapperContainer.innerHTML = '<div class="case-items-wrapper" id="animWrapper"></div><div class="case-selector"></div>';
-            const wrapper = document.getElementById('animWrapper');
-            
-            // Генерация ленты рулетки
-            const allItemsFlattened = Object.values(CASE_POOLS).flat();
-            for (let i = 0; i < 30; i++) {
-                const randItem = allItemsFlattened[Math.floor(Math.random() * allItemsFlattened.length)];
-                const randQual = QUALITY_ORDER[Math.floor(Math.random() * QUALITY_ORDER.length)];
-                const d = document.createElement('div');
-                d.className = `case-item-animation q-${i === 25 ? wonItem.quality : randQual}`;
-                d.textContent = i === 25 ? wonItem.emoji : randItem.emoji;
-                wrapper.appendChild(d);
-            }
-            
-            animContainer.style.display = 'flex';
-            wrapper.style.transform = 'translateX(0px)';
-            void wrapper.offsetWidth;
-            
-            wrapper.style.transition = 'transform 3.5s cubic-bezier(0.15, 0.85, 0.35, 1)';
-            wrapper.style.transform = 'translateX(-2600px)'; // точный сдвиг под 25-й элемент с учетом марджинов
-            
-            setTimeout(() => {
-                animContainer.style.display = 'none';
-                updateBalance(currentBalance - price);
-                inventory.push(wonItem);
-                updateInventory();
-                
-                const qualNames = { common: 'Обычный', uncommon: 'Необычный', rare: 'Редкий', epic: 'Мифический', legendary: 'Легендарный' };
-                showNotice(`Выпало: ${wonItem.name} [${qualNames[wonItem.quality]}]`, true);
-                document.getElementById('openCaseButton').disabled = false;
-            }, 3600);
-        });
+function playOrderAnimation(wonPosition, onComplete) {
+    const overlay = document.getElementById('orderOverlay');
+    const container = document.getElementById('rollContainer');
+    container.innerHTML = '<div class="roll-wrapper" id="rollWrapper"></div><div class="roll-selector"></div>';
+    const wrapper = document.getElementById('rollWrapper');
 
-        /* --- ЛОГИКА АПГРЕЙДА --- */
-        function selectForUpgrade(index) {
-            upgradeIndex = index;
-            const item = inventory[index];
-            
-            const currentQualityIndex = QUALITY_ORDER.indexOf(item.quality);
-            const nextQuality = QUALITY_ORDER[currentQualityIndex + 1];
-            
-            // Подсветка текущего уровня на шкале
-            document.querySelectorAll('.timeline-step').forEach(s => s.className = 'timeline-step');
-            document.getElementById(`step-${item.quality}`).classList.add(`q-${item.quality}`, 'active');
+    const allAssets = Object.values(ASSET_POOLS).flatMap(p => p.assets.map(a => ({ ...a, icon: p.icon })));
 
-            const curPrice = item.baseValue * QUALITY_MULTIPLIERS[item.quality];
-            document.getElementById('price-input-label').textContent = `Текущая цена: ${curPrice} руб.`;
+    for (let i = 0; i < 30; i++) {
+        const isWinningSlot = (i === 25);
+        const randomAsset = allAssets[Math.floor(Math.random() * allAssets.length)];
+        const randomRating = RATING_ORDER[Math.floor(Math.random() * RATING_ORDER.length)];
+        const cell = document.createElement('div');
+        cell.className = `roll-item r-${isWinningSlot ? wonPosition.rating : randomRating}`;
+        cell.innerHTML = `<div>${isWinningSlot ? wonPosition.icon : randomAsset.icon}</div><span>${isWinningSlot ? wonPosition.ticker : randomAsset.ticker}</span>`;
+        wrapper.appendChild(cell);
+    }
 
-            const slotIn = document.getElementById('slot-input');
-            slotIn.className = `upgrade-slot q-${item.quality}`;
-            slotIn.textContent = item.emoji;
+    overlay.style.display = 'flex';
+    wrapper.style.transform = 'translateX(0px)';
+    void wrapper.offsetWidth;
+    wrapper.style.transition = 'transform 3.5s cubic-bezier(0.15, 0.85, 0.35, 1)';
 
-            if(!nextQuality) {
-                // Максимальный уровень
-                document.getElementById('price-output-label').textContent = `Максимум достигнут`;
-                document.getElementById('slot-output').className = 'upgrade-slot';
-                document.getElementById('slot-output').textContent = '👑';
-                document.getElementById('upgradeChance').textContent = `Шанс успеха: 0%`;
-                document.getElementById('upgradeButton').disabled = true;
-                updateInventory();
-                return;
-            }
+    // Контейнер шириной 320px (центр 160px); каждый слот 100px + 4px отступа = 104px.
+    // 25-й слот начинается на 2600px, центр на 2652px -> сдвиг -2492px.
+    wrapper.style.transform = 'translateX(-2492px)';
 
-            const nextPrice = item.baseValue * QUALITY_MULTIPLIERS[nextQuality];
-            document.getElementById('price-output-label').textContent = `При успехе: ${nextPrice} руб.`;
+    setTimeout(() => {
+        overlay.style.display = 'none';
+        onComplete();
+    }, 3600);
+}
 
-            const slotOut = document.getElementById('slot-output');
-            slotOut.className = `upgrade-slot q-${nextQuality}`;
-            slotOut.textContent = item.emoji;
+/* =========================================================
+   МАРЖИНАЛЬНАЯ СДЕЛКА (АНАЛОГ "АПГРЕЙДА")
+   ========================================================= */
 
-            // Расчет шансов для каждого перехода
-            const chances = { common: 75, uncommon: 55, rare: 35, epic: 15 };
-            const currentChance = chances[item.quality] || 50;
-            
-            document.getElementById('upgradeChance').textContent = `Шанс успеха: ${currentChance}%`;
-            
-            const upBtn = document.getElementById('upgradeButton');
-            upBtn.disabled = false;
-            updateInventory();
+function selectForMargin(index) {
+    state.marginIndex = index;
+    const position = state.portfolio[index];
+    const currentIdx = RATING_ORDER.indexOf(position.rating);
+    const nextRating = RATING_ORDER[currentIdx + 1];
+
+    document.querySelectorAll('.rating-step').forEach(s => s.className = 'rating-step');
+    document.getElementById(`step-${position.rating}`).classList.add(`r-${position.rating}`, 'active');
+
+    const currentValue = position.baseValue * RATING_MULTIPLIER[position.rating];
+    document.getElementById('price-input-label').textContent = `Текущая оценка: ${formatMoney(currentValue)}`;
+
+    const slotIn = document.getElementById('slot-input');
+    slotIn.className = `margin-slot r-${position.rating}`;
+    slotIn.innerHTML = `${position.icon}<span class="rating-tag">${position.rating}</span>`;
+
+    const slotOut = document.getElementById('slot-output');
+    const marginBtn = document.getElementById('marginButton');
+
+    if (!nextRating) {
+        document.getElementById('price-output-label').textContent = 'Максимальный рейтинг достигнут';
+        slotOut.className = 'margin-slot';
+        slotOut.innerHTML = '🏆';
+        document.getElementById('marginChance').textContent = 'Вероятность исполнения: —';
+        marginBtn.disabled = true;
+        renderPortfolio();
+        return;
+    }
+
+    const nextValue = position.baseValue * RATING_MULTIPLIER[nextRating];
+    document.getElementById('price-output-label').textContent = `При исполнении: ${formatMoney(nextValue)}`;
+
+    slotOut.className = `margin-slot r-${nextRating}`;
+    slotOut.innerHTML = `${position.icon}<span class="rating-tag">${nextRating}</span>`;
+
+    const chance = MARGIN_SUCCESS_CHANCE[position.rating] || 50;
+    document.getElementById('marginChance').textContent = `Вероятность исполнения: ${chance}%`;
+
+    marginBtn.disabled = false;
+    renderPortfolio();
+}
+
+function resetMarginSelection() {
+    state.marginIndex = null;
+    const slotIn = document.getElementById('slot-input');
+    const slotOut = document.getElementById('slot-output');
+    slotIn.className = 'margin-slot';
+    slotIn.textContent = '❓';
+    slotOut.className = 'margin-slot';
+    slotOut.textContent = '❓';
+
+    document.getElementById('price-input-label').textContent = 'Текущая оценка: $0';
+    document.getElementById('price-output-label').textContent = 'При исполнении: $0';
+    document.getElementById('marginChance').textContent = 'Вероятность исполнения: 0%';
+    document.getElementById('marginButton').disabled = true;
+    document.querySelectorAll('.rating-step').forEach(s => s.className = 'rating-step');
+}
+
+function executeMarginTrade() {
+    try {
+        if (state.marginIndex === null) return;
+        const position = state.portfolio[state.marginIndex];
+        const currentIdx = RATING_ORDER.indexOf(position.rating);
+        const nextRating = RATING_ORDER[currentIdx + 1];
+        if (!nextRating) return;
+
+        const chance = MARGIN_SUCCESS_CHANCE[position.rating] || 50;
+        const roll = Math.random() * 100;
+
+        if (roll <= chance) {
+            state.portfolio[state.marginIndex].rating = nextRating;
+            showNotice(`Сделка исполнена. Новый рейтинг: ${nextRating} (${RATING_LABELS[nextRating]})`, true);
+        } else {
+            state.portfolio.splice(state.marginIndex, 1);
+            showNotice('Маржин-колл: позиция принудительно ликвидирована', false);
         }
 
-        function resetUpgrade() {
-            upgradeIndex = null;
-            const slotIn = document.getElementById('slot-input');
-            const slotOut = document.getElementById('slot-output');
-            
-            slotIn.className = 'upgrade-slot';
-            slotIn.textContent = '❓';
-            slotOut.className = 'upgrade-slot';
-            slotOut.textContent = '❓';
-            
-            document.getElementById('price-input-label').textContent = 'Текущая цена: 0 руб.';
-            document.getElementById('price-output-label').textContent = 'При успехе: 0 руб.';
-            document.getElementById('upgradeChance').textContent = 'Шанс успеха: 0%';
-            document.getElementById('upgradeButton').disabled = true;
-            
-            document.querySelectorAll('.timeline-step').forEach(s => s.className = 'timeline-step');
-        }
+        resetMarginSelection();
+        renderPortfolio();
+    } catch (err) {
+        console.error('Ошибка исполнения маржинальной сделки:', err);
+        showNotice('Ошибка исполнения ордера', false);
+    }
+}
 
-        document.getElementById('upgradeButton').addEventListener('click', () => {
-            if (upgradeIndex === null) return;
-            
-            const item = inventory[upgradeIndex];
-            const currentQualityIndex = QUALITY_ORDER.indexOf(item.quality);
-            const nextQuality = QUALITY_ORDER[currentQualityIndex + 1];
-            
-            if(!nextQuality) return;
+/* =========================================================
+   РЫНОЧНЫЕ СОБЫТИЯ (ФОНОВЫЙ ТИК)
+   ========================================================= */
 
-            const chances = { common: 75, uncommon: 55, rare: 35, epic: 15 };
-            const currentChance = chances[item.quality] || 50;
-            const roll = Math.random() * 100;
-            
-            if (roll <= currentChance) {
-                // Успех
-                inventory[upgradeIndex].quality = nextQuality;
-                showNotice(`Успешный апгрейд качества до ${nextQuality}!`, true);
-            } else {
-                // Сгорел
-                inventory.splice(upgradeIndex, 1);
-                showNotice(`Предмет сломался при попытке улучшения.`, false);
+function runMarketTick() {
+    try {
+        const event = pickWeightedEvent();
+        if (event.type === 'neutral') return;
+
+        if (event.type === 'bear') {
+            const pct = event.min + Math.random() * (event.max - event.min);
+            const impact = -round2(Math.abs(state.balance) * pct + 5);
+            adjustBalance(impact);
+            showNotice(`⚠️ ${event.label}: ${formatMoney(impact)} на счёте`, false);
+        } else if (event.type === 'bull') {
+            const pct = event.min + Math.random() * (event.max - event.min);
+            const impact = round2(Math.abs(state.balance) * pct);
+            if (impact > 0) {
+                adjustBalance(impact);
+                showNotice(`📈 ${event.label}: +${formatMoney(impact).replace('$','$')} на счёте`, true);
             }
-            
-            resetUpgrade();
-            updateInventory();
-        });
-
-        /* --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ --- */
-        function showNotice(msg, isWin) {
-            const el = document.getElementById('resultNotice');
-            el.textContent = msg;
-            el.className = `result ${isWin ? 'win' : 'lose'}`;
-            el.style.display = 'block';
-            setTimeout(() => { el.style.display = 'none'; }, 4000);
+        } else if (event.type === 'tax') {
+            const flat = round2(event.min + Math.random() * (event.max - event.min));
+            adjustBalance(-flat);
+            showNotice(`🏦 ${event.label}: -${formatMoney(flat).replace('-','')}`, false);
         }
+    } catch (err) {
+        console.error('Ошибка обработки рыночного события:', err);
+    }
+}
 
-        document.getElementById('creditButton').addEventListener('click', () => {
-            if(currentBalance <= 0) {
-                updateBalance(1000);
-                resetUpgrade();
-                updateInventory();
-                showNotice('Вам начислен антикризисный бонус 1000 руб.!', true);
-            }
-        });
-    </script>
+function pickWeightedEvent() {
+    const totalWeight = MARKET_EVENTS.reduce((sum, e) => sum + e.weight, 0);
+    let roll = Math.random() * totalWeight;
+    for (const event of MARKET_EVENTS) {
+        if (roll < event.weight) return event;
+        roll -= event.weight;
+    }
+    return MARKET_EVENTS[0];
+}
+
+/* =========================================================
+   ЭКСТРЕННАЯ ДОКАПИТАЛИЗАЦИЯ
+   ========================================================= */
+
+function executeRecapitalization() {
+    try {
+        if (state.balance > 0) return;
+        adjustBalance(1000);
+        resetMarginSelection();
+        renderPortfolio();
+        showNotice('Экстренная докапитализация счёта: +$1,000', true);
+    } catch (err) {
+        console.error('Ошибка докапитализации счёта:', err);
+    }
+}
+
+/* =========================================================
+   УВЕДОМЛЕНИЯ
+   ========================================================= */
+
+let noticeTimer = null;
+
+function showNotice(message, isPositive) {
+    const el = document.getElementById('noticeBox');
+    el.textContent = message;
+    el.className = `notice ${isPositive ? 'win' : 'lose'}`;
+    el.style.display = 'block';
+    if (noticeTimer) clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(hideNotice, 4500);
+}
+
+function hideNotice() {
+    document.getElementById('noticeBox').style.display = 'none';
+}
+
+/* =========================================================
+   ЗАПУСК
+   ========================================================= */
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
 </body>
 </html>
