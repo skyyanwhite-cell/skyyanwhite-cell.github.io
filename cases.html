@@ -364,11 +364,11 @@
                 <span id="price-output-label">При исполнении: $0</span>
             </div>
             <div class="rating-scale">
-                <div class="rating-step" id="step-D"><b>D</b><small>65%</small></div>
-                <div class="rating-step" id="step-C"><b>C</b><small>55%</small></div>
-                <div class="rating-step" id="step-B"><b>B</b><small>35%</small></div>
-                <div class="rating-step" id="step-A"><b>A</b><small>25%</small></div>
-                <div class="rating-step" id="step-S"><b>S</b><small>MAX</small></div>
+                <div class="rating-step" id="step-D"><b>D</b><small>Спекул.</small></div>
+                <div class="rating-step" id="step-C"><b>C</b><small>Волатил.</small></div>
+                <div class="rating-step" id="step-B"><b>B</b><small>Стабильн.</small></div>
+                <div class="rating-step" id="step-A"><b>A</b><small>Надёжн.</small></div>
+                <div class="rating-step" id="step-S"><b>S</b><small>Суверен.</small></div>
             </div>
             <!--
                 ВАЖНО: этот элемент раньше отсутствовал в HTML, хотя JS
@@ -421,10 +421,6 @@ const RATING_MULTIPLIER = { D: 1, C: 1.8, B: 4, A: 8, S: 18 };
 
 // Вероятность успешного повышения рейтинга при марж. сделке (ужесточено)
 const MARGIN_SUCCESS_CHANCE = { D: 65, C: 55, B: 35, A: 25 };
-
-// Вероятность того, что сделка закроется в ноль (без прибыли и без убытка)
-const BREAKEVEN_CHANCE = 0.22;
-
 
 const ASSET_POOLS = {
     spot: {
@@ -887,24 +883,17 @@ function closePosition(index) {
         adjustBalance(outcome.payout);
 
         const arrow = resultArrow(outcome.payout, cost);
-        const message = outcome.type === 'breakeven'
-            ? `${arrow} Сделка закрыта без прибыли: ${formatMoney(outcome.payout)}`
-            : `${arrow} Позиция закрыта: ${formatMoney(outcome.payout)}`;
-        showNotice(message, outcome.payout >= cost);
+        showNotice(`${arrow} Позиция закрыта: ${formatMoney(outcome.payout)}`, outcome.payout >= cost);
     } catch (err) {
         console.error('Ошибка закрытия позиции:', err);
         showNotice('Ошибка исполнения ордера на закрытие позиции', false);
     }
 }
 
-// Расчёт итога сделки: без штормов и штрафов — либо небольшой разброс вокруг
-// справедливой стоимости, либо (с заданной вероятностью) сделка закрывается
-// строго в ноль — игрок просто возвращает вложенную сумму без прибыли.
+// Расчёт итога сделки: умеренный разброс вокруг справедливой стоимости,
+// без штормов и штрафов. Механика "закрыть строго в ноль" убрана —
+// теперь исход всегда обычный разброс 0.85x - 1.20x от справедливой стоимости.
 function rollDealOutcome(grossValue, cost) {
-    if (Math.random() < BREAKEVEN_CHANCE) {
-        return { payout: round2(cost), type: 'breakeven' };
-    }
-    // Умеренный разброс без резких обвалов: 0.85x - 1.20x от справедливой стоимости
     const factor = 0.85 + Math.random() * 0.35;
     return { payout: round2(grossValue * factor), type: factor >= 1 ? 'profit' : 'lowyield' };
 }
