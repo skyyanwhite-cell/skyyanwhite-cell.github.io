@@ -58,6 +58,10 @@
             height: 100px;
             object-fit: contain;
             margin-bottom: 8px;
+            font-size: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .case-name {
@@ -96,19 +100,15 @@
             font-size: 24px;
             position: relative;
             cursor: pointer;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .inventory-item.rare {
-            color: #ff3b30;
-        }
-
-        .inventory-item.epic {
-            color: #5856d6;
-        }
-
-        .inventory-item.legendary {
-            color: #ff9500;
-        }
+        .inventory-item.rare { color: #ff3b30; }
+        .inventory-item.epic { color: #5856d6; }
+        .inventory-item.legendary { color: #ff9500; }
 
         .inventory-item .sell-button {
             position: absolute;
@@ -155,21 +155,9 @@
             display: none;
         }
 
-        .win {
-            color: #34c759;
-            font-weight: bold;
-        }
-
-        .lose {
-            color: #ff3b30;
-        }
-
-        .error {
-            color: #ff3b30;
-            text-align: center;
-            margin-top: 10px;
-            font-size: 14px;
-        }
+        .win { color: #34c759; font-weight: bold; }
+        .lose { color: #ff3b30; }
+        .error { color: #ff3b30; text-align: center; margin-top: 10px; font-size: 14px; }
 
         .debug {
             background: var(--tg-theme-secondary-bg-color);
@@ -184,7 +172,7 @@
 
         .credit-button {
             display: none;
-            margin-top: 10px;
+            margin: 10px auto 0 auto;
             background: var(--tg-theme-button-color);
             color: var(--tg-theme-button-text-color);
             border: none;
@@ -209,7 +197,7 @@
 
         .case-items-container {
             display: flex;
-            width: 330px; /* Фиксированная ширина для трех предметов */
+            width: 330px;
             height: 100px;
             position: relative;
             overflow: hidden;
@@ -234,24 +222,16 @@
             position: absolute;
             bottom: 5px;
             font-size: 12px;
-            color: var(--tg-theme-text-color);
+            color: white;
             background: rgba(0, 0, 0, 0.5);
             padding: 2px 6px;
             border-radius: 4px;
             white-space: nowrap;
         }
 
-        .case-item-animation.rare .item-price {
-            color: #ff3b30;
-        }
-
-        .case-item-animation.epic .item-price {
-            color: #5856d6;
-        }
-
-        .case-item-animation.legendary .item-price {
-            color: #ff9500;
-        }
+        .case-item-animation.rare .item-price { color: #ff3b30; }
+        .case-item-animation.epic .item-price { color: #5856d6; }
+        .case-item-animation.legendary .item-price { color: #ff9500; }
 
         .case-items-wrapper {
             display: flex;
@@ -321,44 +301,37 @@
         <div class="inventory">
             <h3>Инвентарь</h3>
             <div class="inventory-grid" id="inventoryGrid">
-                <!-- Здесь будут отображаться предметы из инвентаря -->
+                <div style="grid-column: 1 / -1; text-align: center; color: var(--tg-theme-hint-color);">Инвентарь пуст</div>
             </div>
         </div>
 
-        <button class="open-case-button" id="openCaseButton" disabled>Открыть кейс</button>
+        <button class="open-case-button" id="openCaseButton" disabled>Выберите кейс</button>
 
         <div class="result" id="result"></div>
         <div class="error" id="error"></div>
         <div class="debug" id="debug"></div>
 
         <div class="case-opening-animation" id="caseOpeningAnimation">
-            <div class="case-items-container" id="caseItemsContainer">
-                <!-- Здесь будут отображаться предметы во время анимации открытия кейса -->
-            </div>
+            <div class="case-items-container" id="caseItemsContainer"></div>
             <div class="case-opening-result" id="caseOpeningResult"></div>
         </div>
     </div>
 
     <script>
-        // Инициализация Telegram WebApp
         let tg = window.Telegram.WebApp;
-        
-        // Проверяем, что WebApp успешно инициализирован
+        let selectedCase = null;
+        let inventory = [];
+        let currentBalance = 10000;
+
         if (!tg) {
             showError('Ошибка инициализации Telegram WebApp');
-            console.error('Telegram WebApp не инициализирован');
         } else {
-            // Включаем отладку
             tg.enableClosingConfirmation();
             tg.expand();
             
-            // Выводим информацию об инициализации
-            showDebug('Telegram WebApp инициализирован успешно');
-            showDebug('Версия: ' + tg.version);
-            showDebug('Платформа: ' + tg.platform);
-            showDebug('Цветовая схема: ' + tg.colorScheme);
+            showDebug('Telegram WebApp запущен. Готов к игре.');
             
-            // Инициализация темы
+            // Подтягиваем цвета темы Telegram
             document.documentElement.style.setProperty('--tg-theme-bg-color', tg.backgroundColor || '#ffffff');
             document.documentElement.style.setProperty('--tg-theme-text-color', tg.textColor || '#000000');
             document.documentElement.style.setProperty('--tg-theme-button-color', tg.buttonColor || '#3390ec');
@@ -366,78 +339,64 @@
             document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.secondaryBackgroundColor || '#f0f0f0');
             document.documentElement.style.setProperty('--tg-theme-hint-color', tg.hintColor || '#999999');
             
-            // Добавляем обработчик для получения данных от бота
-            tg.onEvent('web_app_data_send', handleBotResponse);
-            
-            // Запрашиваем текущий баланс и инвентарь у бота
-            try {
-                tg.sendData(JSON.stringify({ action: 'get_data' }));
-                showDebug('Запрос данных отправлен');
-            } catch (e) {
-                showError('Ошибка при запросе данных: ' + e.message);
-                showDebug('Ошибка: ' + e.message);
+            // Загружаем сохраненный локально баланс, чтобы он не сбрасывался при перезапуске окна
+            if(localStorage.getItem('casino_balance')) {
+                currentBalance = parseInt(localStorage.getItem('casino_balance'));
             }
+            if(localStorage.getItem('casino_inventory')) {
+                try {
+                    inventory = JSON.parse(localStorage.getItem('casino_inventory'));
+                } catch(e) { inventory = []; }
+            }
+            
+            updateBalance(currentBalance);
+            updateInventory(inventory);
         }
 
-        // Предметы для кейсов
         const ITEMS = {
-            basic: [ // Базовый кейс - 100 монет
-                { name: 'Маленькая монета', emoji: '🪙', rarity: 'common', value: 50 },    // -50
-                { name: 'Средняя монета', emoji: '🪙', rarity: 'common', value: 75 },      // -25
-                { name: 'Обычная монета', emoji: '🪙', rarity: 'common', value: 100 },     // +0
-                { name: 'Мешок монет', emoji: '💰', rarity: 'rare', value: 150 },          // +50
-                { name: 'Сундук монет', emoji: '💰', rarity: 'rare', value: 200 },         // +100
-                { name: 'Кристалл', emoji: '💎', rarity: 'epic', value: 300 },             // +200
-                { name: 'Звезда', emoji: '⭐', rarity: 'legendary', value: 500 }            // +400
+            basic: [
+                { name: 'Маленькая монета', emoji: '🪙', rarity: 'common', value: 50 },
+                { name: 'Средняя монета', emoji: '🪙', rarity: 'common', value: 75 },
+                { name: 'Обычная монета', emoji: '🪙', rarity: 'common', value: 100 },
+                { name: 'Мешок монет', emoji: '💰', rarity: 'rare', value: 150 },
+                { name: 'Сундук монет', emoji: '💰', rarity: 'rare', value: 200 },
+                { name: 'Кристалл', emoji: '💎', rarity: 'epic', value: 300 },
+                { name: 'Звезда', emoji: '⭐', rarity: 'legendary', value: 500 }
             ],
-            premium: [ // Премиум кейс - 500 монет
-                { name: 'Горсть монет', emoji: '🪙', rarity: 'common', value: 300 },       // -200
-                { name: 'Мешочек монет', emoji: '🪙', rarity: 'common', value: 400 },      // -100
-                { name: 'Мешок монет', emoji: '💰', rarity: 'rare', value: 500 },          // +0
-                { name: 'Большой мешок', emoji: '💰', rarity: 'rare', value: 600 },        // +100
-                { name: 'Сундук золота', emoji: '💎', rarity: 'epic', value: 800 },        // +300
-                { name: 'Алмазный слиток', emoji: '💎', rarity: 'epic', value: 1000 },     // +500
-                { name: 'Золотая звезда', emoji: '⭐', rarity: 'legendary', value: 1500 }   // +1000
+            premium: [
+                { name: 'Горсть монет', emoji: '🪙', rarity: 'common', value: 300 },
+                { name: 'Мешочек монет', emoji: '🪙', rarity: 'common', value: 400 },
+                { name: 'Мешок монет', emoji: '💰', rarity: 'rare', value: 500 },
+                { name: 'Большой мешок', emoji: '💰', rarity: 'rare', value: 600 },
+                { name: 'Сундук золото', emoji: '💎', rarity: 'epic', value: 800 },
+                { name: 'Алмазный слиток', emoji: '💎', rarity: 'epic', value: 1000 },
+                { name: 'Золотая звезда', emoji: '⭐', rarity: 'legendary', value: 1500 }
             ],
-            rare: [ // Редкий кейс - 1000 монет
-                { name: 'Мешок серебра', emoji: '🪙', rarity: 'common', value: 600 },      // -400
-                { name: 'Мешок золота', emoji: '💰', rarity: 'common', value: 800 },       // -200
-                { name: 'Сундук монет', emoji: '💰', rarity: 'rare', value: 1000 },        // +0
-                { name: 'Сундук золота', emoji: '💰', rarity: 'rare', value: 1200 },       // +200
-                { name: 'Алмазный куб', emoji: '💎', rarity: 'epic', value: 1500 },        // +500
-                { name: 'Магический кристалл', emoji: '💎', rarity: 'epic', value: 2000 }, // +1000
-                { name: 'Платиновая звезда', emoji: '⭐', rarity: 'legendary', value: 3000 } // +2000
+            rare: [
+                { name: 'Мешок серебра', emoji: '🪙', rarity: 'common', value: 600 },
+                { name: 'Мешок золота', emoji: '💰', rarity: 'common', value: 800 },
+                { name: 'Сундук монет', emoji: '💰', rarity: 'rare', value: 1000 },
+                { name: 'Сундук золота', emoji: '💰', rarity: 'rare', value: 1200 },
+                { name: 'Алмазный куб', emoji: '💎', rarity: 'epic', value: 1500 },
+                { name: 'Магический кристалл', emoji: '💎', rarity: 'epic', value: 2000 },
+                { name: 'Платиновая звезда', emoji: '⭐', rarity: 'legendary', value: 3000 }
             ],
-            epic: [ // Эпический кейс - 2000 монет
-                { name: 'Сундук серебра', emoji: '💰', rarity: 'common', value: 1200 },     // -800
-                { name: 'Сундук золота', emoji: '💰', rarity: 'common', value: 1600 },      // -400
-                { name: 'Алмазный осколок', emoji: '💎', rarity: 'rare', value: 2000 },     // +0
-                { name: 'Алмазный кристалл', emoji: '💎', rarity: 'rare', value: 2500 },    // +500
-                { name: 'Магический алмаз', emoji: '💎', rarity: 'epic', value: 3000 },     // +1000
-                { name: 'Звёздный алмаз', emoji: '⭐', rarity: 'epic', value: 4000 },       // +2000
-                { name: 'Космическая звезда', emoji: '🌟', rarity: 'legendary', value: 6000 } // +4000
+            epic: [
+                { name: 'Сундук серебра', emoji: '💰', rarity: 'common', value: 1200 },
+                { name: 'Сундук золота', emoji: '💰', rarity: 'common', value: 1600 },
+                { name: 'Алмазный осколок', emoji: '💎', rarity: 'rare', value: 2000 },
+                { name: 'Алмазный кристалл', emoji: '💎', rarity: 'rare', value: 2500 },
+                { name: 'Магический алмаз', emoji: '💎', rarity: 'epic', value: 3000 },
+                { name: 'Звёздный алмаз', emoji: '⭐', rarity: 'epic', value: 4000 },
+                { name: 'Космическая звезда', emoji: '🌟', rarity: 'legendary', value: 6000 }
             ]
         };
 
-        // Шансы выпадения предметов разной редкости
-        const RARITY_CHANCES = {
-            common: 0.50,    // 50% шанс
-            rare: 0.30,      // 30% шанс
-            epic: 0.15,      // 15% шанс
-            legendary: 0.05  // 5% шанс
-        };
-
-        // Текущий выбранный кейс
-        let selectedCase = null;
-
-        // Инвентарь игрока
-        let inventory = [];
+        const RARITY_CHANCES = { common: 0.50, rare: 0.30, epic: 0.15, legendary: 0.05 };
 
         function showError(message) {
             document.getElementById('error').textContent = message;
-            setTimeout(() => {
-                document.getElementById('error').textContent = '';
-            }, 3000);
+            setTimeout(() => { document.getElementById('error').textContent = ''; }, 3000);
         }
 
         function showDebug(message) {
@@ -449,41 +408,27 @@
             resultElement.textContent = message;
             resultElement.className = isWin ? 'result win' : 'result lose';
             resultElement.style.display = 'block';
-            
-            // Добавляем отладочную информацию
-            showDebug('Показан результат: ' + message + ' (isWin: ' + isWin + ')');
         }
 
-        // Функция для обновления баланса
         function updateBalance(newBalance) {
-            const balanceElement = document.querySelector('.balance-amount');
-            const oldBalance = parseInt(balanceElement.textContent);
-            balanceElement.textContent = newBalance + ' монет';
+            currentBalance = newBalance;
+            localStorage.setItem('casino_balance', currentBalance);
             
-            // Показываем или скрываем кнопку кредита в зависимости от баланса
+            const balanceElement = document.querySelector('.balance-amount');
+            balanceElement.textContent = currentBalance + ' монет';
+            
             const creditButton = document.getElementById('creditButton');
-            if (newBalance <= 0) {
+            if (currentBalance <= 0) {
                 creditButton.style.display = 'block';
             } else {
                 creditButton.style.display = 'none';
             }
-            
-            // Добавляем анимацию изменения баланса
-            if (oldBalance !== newBalance) {
-                balanceElement.style.transition = 'color 0.3s';
-                balanceElement.style.color = newBalance > oldBalance ? '#34c759' : '#ff3b30';
-                setTimeout(() => {
-                    balanceElement.style.transition = 'color 0.3s';
-                    balanceElement.style.color = '';
-                }, 500);
-            }
-            
-            showDebug('Баланс обновлен: ' + newBalance);
         }
 
-        // Функция для обновления инвентаря
         function updateInventory(newInventory) {
             inventory = newInventory;
+            localStorage.setItem('casino_inventory', JSON.stringify(inventory));
+            
             const inventoryGrid = document.getElementById('inventoryGrid');
             inventoryGrid.innerHTML = '';
             
@@ -498,7 +443,6 @@
                 itemElement.textContent = item.emoji;
                 itemElement.title = `${item.name} (${item.value} монет)`;
                 
-                // Добавляем кнопку продажи
                 const sellButton = document.createElement('div');
                 sellButton.className = 'sell-button';
                 sellButton.textContent = 'Продать';
@@ -510,18 +454,30 @@
                 itemElement.appendChild(sellButton);
                 inventoryGrid.appendChild(itemElement);
             });
-            
-            showDebug('Инвентарь обновлен: ' + JSON.stringify(inventory));
         }
 
-        // Функция для выбора кейса
+        function sellItem(index) {
+            const item = inventory[index];
+            const reward = item.value;
+            
+            inventory.splice(index, 1);
+            updateInventory(inventory);
+            updateBalance(currentBalance + reward);
+            
+            showResult(`Вы продали ${item.name} за ${reward} монет!`, true);
+            
+            // Уведомляем бота в чате (не закрывая окно)
+            try {
+                tg.sendData(JSON.stringify({ action: 'update_data', balance: currentBalance, inventory: inventory, item_sold: item }));
+            } catch(e){}
+        }
+
         function selectCase(caseType) {
             selectedCase = caseType;
             const openCaseButton = document.getElementById('openCaseButton');
             openCaseButton.disabled = false;
             openCaseButton.textContent = `Открыть ${getCaseName(caseType)} (${getCasePrice(caseType)} монет)`;
             
-            // Подсвечиваем выбранный кейс
             document.querySelectorAll('.case-item').forEach(item => {
                 if (item.dataset.case === caseType) {
                     item.style.border = '2px solid var(--tg-theme-button-color)';
@@ -529,22 +485,18 @@
                     item.style.border = 'none';
                 }
             });
-            
-            showDebug('Выбран кейс: ' + caseType);
         }
 
-        // Функция для получения названия кейса
         function getCaseName(caseType) {
             switch (caseType) {
                 case 'basic': return 'Базовый кейс';
                 case 'premium': return 'Премиум кейс';
                 case 'rare': return 'Редкий кейс';
                 case 'epic': return 'Эпический кейс';
-                default: return 'Неизвестный кейс';
+                default: return 'Кейс';
             }
         }
 
-        // Функция для получения цены кейса
         function getCasePrice(caseType) {
             switch (caseType) {
                 case 'basic': return 100;
@@ -555,360 +507,137 @@
             }
         }
 
-        // Функция для открытия кейса
         function openCase() {
-            if (!selectedCase) {
-                showError('Выберите кейс для открытия!');
-                return;
-            }
+            if (!selectedCase) return;
             
             const casePrice = getCasePrice(selectedCase);
-            const balanceElement = document.querySelector('.balance-amount');
-            const currentBalance = parseInt(balanceElement.textContent);
-            
             if (currentBalance < casePrice) {
-                showError('Недостаточно средств для открытия кейса!');
+                showError('Недостаточно средств!');
                 return;
             }
             
-            // Скрываем предыдущий результат
             document.getElementById('result').style.display = 'none';
-            
-            // Отключаем кнопку открытия кейса
             document.getElementById('openCaseButton').disabled = true;
             
-            // Генерируем случайный предмет из кейса
             const item = getRandomItem(selectedCase);
             
-            // Создаем копию предмета для инвентаря
-            const inventoryItem = {...item};
-            
-            // Показываем анимацию открытия кейса
             showCaseOpeningAnimation(item, () => {
-                // Обновляем баланс (только вычитаем стоимость кейса)
                 const newBalance = currentBalance - casePrice;
-                updateBalance(newBalance);
+                inventory.push({...item});
                 
-                // Добавляем точную копию предмета в инвентарь
-                inventory.push(inventoryItem);
+                updateBalance(newBalance);
                 updateInventory(inventory);
                 
-                // Показываем результат
-                showResult(`Вы получили: ${inventoryItem.name}`, true);
+                showResult(`Вы получили: ${item.name}`, true);
                 
-                // Отправляем данные боту для сохранения
                 try {
-                    const data = {
+                    tg.sendData(JSON.stringify({
                         action: 'update_data',
                         balance: newBalance,
                         inventory: inventory,
-                        won_item: inventoryItem
-                    };
-                    tg.sendData(JSON.stringify(data));
-                    showDebug('Отправлены данные боту: ' + JSON.stringify(data));
-                } catch (e) {
-                    showError('Ошибка при сохранении данных: ' + e.message);
-                    showDebug('Ошибка отправки данных боту: ' + e.message);
-                }
+                        won_item: item
+                    }));
+                } catch (e) {}
                 
-                // Включаем кнопку открытия кейса
                 document.getElementById('openCaseButton').disabled = false;
             });
         }
 
-        // Функция для получения случайного предмета из кейса
         function getRandomItem(caseType) {
             const items = ITEMS[caseType];
-            
-            // Определяем редкость предмета на основе шансов
             const rarityRoll = Math.random();
             let selectedRarity;
             
-            if (rarityRoll < RARITY_CHANCES.legendary) {
-                selectedRarity = 'legendary';
-            } else if (rarityRoll < RARITY_CHANCES.legendary + RARITY_CHANCES.epic) {
-                selectedRarity = 'epic';
-            } else if (rarityRoll < RARITY_CHANCES.legendary + RARITY_CHANCES.epic + RARITY_CHANCES.rare) {
-                selectedRarity = 'rare';
-            } else {
-                selectedRarity = 'common';
-            }
+            if (rarityRoll < RARITY_CHANCES.legendary) selectedRarity = 'legendary';
+            else if (rarityRoll < RARITY_CHANCES.legendary + RARITY_CHANCES.epic) selectedRarity = 'epic';
+            else if (rarityRoll < RARITY_CHANCES.legendary + RARITY_CHANCES.epic + RARITY_CHANCES.rare) selectedRarity = 'rare';
+            else selectedRarity = 'common';
             
-            // Фильтруем предметы по выбранной редкости
             const rarityItems = items.filter(item => item.rarity === selectedRarity);
-            
-            // Выбираем случайный предмет из отфильтрованных
-            const selectedItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
-            
-            // Создаем новый объект, чтобы избежать проблем с ссылками
-            return {
-                name: selectedItem.name,
-                emoji: selectedItem.emoji,
-                rarity: selectedItem.rarity,
-                value: selectedItem.value
-            };
+            return rarityItems[Math.floor(Math.random() * rarityItems.length)];
         }
 
-        // Функция для показа анимации открытия кейса
         function showCaseOpeningAnimation(item, callback) {
             const animationContainer = document.getElementById('caseOpeningAnimation');
             const itemsContainer = document.getElementById('caseItemsContainer');
             
-            // Очищаем контейнер
             itemsContainer.innerHTML = '';
             
-            // Создаем обертку для предметов
             const itemsWrapper = document.createElement('div');
             itemsWrapper.className = 'case-items-wrapper';
             itemsContainer.appendChild(itemsWrapper);
             
-            // Создаем селектор выигрыша
             const selector = document.createElement('div');
             selector.className = 'case-selector';
             itemsContainer.appendChild(selector);
             
-            // Генерируем случайные предметы для анимации (больше предметов для длинной анимации)
             const animationItems = [];
             const possibleItems = [];
             
-            // Собираем все возможные предметы из всех кейсов
             Object.values(ITEMS).forEach(caseItems => {
                 caseItems.forEach(caseItem => {
-                    if (!possibleItems.some(existing => 
-                        existing.emoji === caseItem.emoji && 
-                        existing.rarity === caseItem.rarity
-                    )) {
+                    if (!possibleItems.some(ex => ex.emoji === caseItem.emoji)) {
                         possibleItems.push({...caseItem});
                     }
                 });
             });
             
-            // Генерируем случайные предметы для анимации
-            for (let i = 0; i < 100; i++) {
-                const randomItem = {...possibleItems[Math.floor(Math.random() * possibleItems.length)]};
-                animationItems.push(randomItem);
+            for (let i = 0; i < 40; i++) {
+                animationItems.push({...possibleItems[Math.floor(Math.random() * possibleItems.length)]});
             }
             
-            // Заменяем последние несколько предметов на выигранный, чтобы создать иллюзию замедления на нужном предмете
-            for (let i = 0; i < 3; i++) {
-                animationItems[animationItems.length - 1 - i] = {...item};
-            }
+            animationItems[35] = {...item}; 
             
-            // Создаем элементы для анимации
             animationItems.forEach(animItem => {
                 const itemElement = document.createElement('div');
                 itemElement.className = 'case-item-animation ' + animItem.rarity;
                 
-                // Создаем контейнер для эмодзи
-                const emojiContainer = document.createElement('div');
-                emojiContainer.textContent = animItem.emoji;
-                itemElement.appendChild(emojiContainer);
+                const em = document.createElement('div');
+                em.textContent = animItem.emoji;
+                itemElement.appendChild(em);
                 
-                // Добавляем цену
-                const priceElement = document.createElement('div');
-                priceElement.className = 'item-price';
-                priceElement.textContent = animItem.value + ' 💰';
-                itemElement.appendChild(priceElement);
+                const pr = document.createElement('div');
+                pr.className = 'item-price';
+                pr.textContent = animItem.value + ' 💰';
+                itemElement.appendChild(pr);
                 
                 itemsWrapper.appendChild(itemElement);
             });
             
-            // Показываем анимацию
             animationContainer.style.display = 'flex';
+            itemsWrapper.style.transform = 'translateX(0px)';
             
-            // Начальное положение (немного правее)
-            itemsWrapper.style.transform = 'translateX(100px)';
-            
-            // Форсируем перерисовку
             void itemsWrapper.offsetWidth;
             
-            // Запускаем анимацию
             setTimeout(() => {
-                // Первая быстрая фаза
-                itemsWrapper.style.transition = 'transform 3s cubic-bezier(0.1, 0, 0.9, 1)';
-                itemsWrapper.style.transform = 'translateX(-5000px)';
+                itemsWrapper.style.transition = 'transform 4s cubic-bezier(0.1, 0.5, 0.1, 1)';
+                const finalPosition = -(35 * 110) + 110;
+                itemsWrapper.style.transform = `translateX(${finalPosition}px)`;
                 
-                // Через 3 секунды запускаем фазу замедления
                 setTimeout(() => {
-                    // Вычисляем конечную позицию так, чтобы выигранный предмет оказался по центру
-                    const finalPosition = -(animationItems.length - 3) * 110;
-                    itemsWrapper.style.transition = 'transform 4s cubic-bezier(0.3, 0.2, 0, 1)';
-                    itemsWrapper.style.transform = `translateX(${finalPosition}px)`;
-                    
-                    // После завершения анимации
                     setTimeout(() => {
-                        // Добавляем эффект подсветки выигрыша
-                        const winningItem = itemsWrapper.children[animationItems.length - 1];
-                        winningItem.style.transform = 'scale(1.1)';
-                        winningItem.style.boxShadow = '0 0 20px var(--tg-theme-button-color)';
-                        
-                        // Через 2 секунды скрываем анимацию
-                        setTimeout(() => {
-                            animationContainer.style.display = 'none';
-                            if (callback) callback();
-                        }, 2000);
-                    }, 4000);
-                }, 3000);
-            }, 100);
+                        animationContainer.style.display = 'none';
+                        if (callback) callback();
+                    }, 1500);
+                }, 4000);
+            }, 50);
         }
 
-        // Функция для обработки ответа от бота
-        function handleBotResponse(event) {
-            try {
-                showDebug('Получен ответ от бота: ' + event);
-                
-                let data;
-                // Если данные в формате JSON строки
-                if (typeof event === 'string') {
-                    try {
-                        // Проверяем, начинается ли строка с префикса web_app_data:
-                        if (event.startsWith('web_app_data:')) {
-                            // Удаляем префикс и парсим JSON
-                            data = JSON.parse(event.substring('web_app_data:'.length));
-                        } else {
-                            // Пытаемся распарсить как обычный JSON
-                            data = JSON.parse(event);
-                        }
-                        showDebug('Распарсенные данные: ' + JSON.stringify(data));
-                    } catch (e) {
-                        showDebug('Ошибка парсинга JSON: ' + e.message);
-                        return;
-                    }
-                } else {
-                    // Если данные уже в формате объекта
-                    data = event;
-                }
-                
-                // Обновляем баланс, если он был передан
-                if (data && typeof data.balance !== 'undefined') {
-                    showDebug('Обновление баланса: ' + data.balance);
-                    updateBalance(data.balance);
-                }
-                
-                // Обновляем инвентарь, если он был передан
-                if (data && Array.isArray(data.inventory)) {
-                    showDebug('Обновление инвентаря: ' + JSON.stringify(data.inventory));
-                    updateInventory(data.inventory);
-                }
-                
-            } catch (e) {
-                showError('Ошибка при обработке ответа от бота: ' + e.message);
-                showDebug('Ошибка обработки: ' + e.message);
-            }
-        }
-
-        // Обработчики событий
         document.querySelectorAll('.case-item').forEach(item => {
-            item.addEventListener('click', function() {
-                selectCase(this.dataset.case);
-            });
+            item.addEventListener('click', function() { selectCase(this.dataset.case); });
         });
 
         document.getElementById('openCaseButton').addEventListener('click', openCase);
 
-        // Обработчик нажатия на кнопку кредита
         document.getElementById('creditButton').addEventListener('click', function() {
-            const currentBalance = parseInt(document.querySelector('.balance-amount').textContent);
             if (currentBalance <= 0) {
-                // Добавляем 1000 монет к балансу
-                const newBalance = currentBalance + 1000;
-                updateBalance(newBalance);
-                
-                // Отправляем данные боту для сохранения баланса
+                updateBalance(currentBalance + 1000);
+                showResult('Вы взяли кредит в 1000 монет', true);
                 try {
-                    const data = {
-                        action: 'update_balance',
-                        balance: newBalance,
-                        credit_taken: true
-                    };
-                    tg.sendData(JSON.stringify(data));
-                    showDebug('Отправлены данные о взятии кредита: ' + JSON.stringify(data));
-                } catch (e) {
-                    showError('Ошибка при сохранении баланса: ' + e.message);
-                    showDebug('Ошибка отправки данных боту: ' + e.message);
-                }
-            }
-        });
-
-        // Функция для продажи предмета
-        function sellItem(index) {
-            if (index < 0 || index >= inventory.length) {
-                showError('Предмет не найден!');
-                return;
-            }
-            
-            const item = inventory[index];
-            const balanceElement = document.querySelector('.balance-amount');
-            const currentBalance = parseInt(balanceElement.textContent);
-            
-            // Удаляем предмет из инвентаря
-            inventory.splice(index, 1);
-            
-            // Обновляем баланс
-            const newBalance = currentBalance + item.value;
-            updateBalance(newBalance);
-            
-            // Обновляем инвентарь
-            updateInventory(inventory);
-            
-            // Показываем результат
-            showResult(`Вы продали ${item.name} за ${item.value} монет`, true);
-            
-            // Отправляем данные боту для сохранения
-            try {
-                const data = {
-                    action: 'update_data',
-                    balance: newBalance,
-                    inventory: inventory,
-                    item_sold: item
-                };
-                tg.sendData(JSON.stringify(data));
-                showDebug('Отправлены данные о продаже предмета: ' + JSON.stringify(data));
-            } catch (e) {
-                showError('Ошибка при сохранении данных: ' + e.message);
-                showDebug('Ошибка отправки данных боту: ' + e.message);
-            }
-        }
-
-        // Инициализация при загрузке страницы
-        document.addEventListener('DOMContentLoaded', async function() {
-            try {
-                // Устанавливаем начальный баланс 10000 монет
-                updateBalance(10000);
-                
-                // Запрашиваем данные у бота (для синхронизации)
-                const data = {
-                    action: 'get_data',
-                    inventory: inventory
-                };
-                tg.sendData(JSON.stringify(data));
-                showDebug('Запрошены данные у бота');
-            } catch (e) {
-                showError('Ошибка при инициализации: ' + e.message);
-            }
-        });
-
-        // Обработчик входящих сообщений от бота
-        window.addEventListener('message', function(event) {
-            try {
-                if (event.data && typeof event.data === 'string') {
-                    const data = JSON.parse(event.data);
-                    if (data.balance !== undefined) {
-                        // Обновляем баланс из данных бота
-                        updateBalance(data.balance);
-                        showDebug('Получен баланс от бота: ' + data.balance);
-                    }
-                    if (data.inventory) {
-                        // Обновляем инвентарь из данных бота
-                        inventory = data.inventory;
-                        updateInventory(inventory);
-                        showDebug('Получен инвентарь от бота');
-                    }
-                }
-            } catch (e) {
-                showError('Ошибка при обработке сообщения от бота: ' + e.message);
+                    tg.sendData(JSON.stringify({ action: 'update_balance', balance: currentBalance, credit_taken: true }));
+                } catch (e) {}
             }
         });
     </script>
 </body>
-</html> 
+</html>
