@@ -117,7 +117,6 @@
         font-size: 11px;
         color: var(--text-dim);
         margin-top: 4px;
-        margin-bottom: 4px;
     }
     .recap-button{
         display: none;
@@ -130,7 +129,6 @@
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        width: 100%;
     }
 
     /* ---- Корзины активов ---- */
@@ -302,6 +300,19 @@
         box-sizing: border-box; pointer-events: none; z-index: 2;
         box-shadow: 0 0 12px rgba(201,169,97,0.5);
     }
+
+    /* ---- Индикатор синхронизации ---- */
+    .sync-indicator{
+        position: fixed; top: 8px; right: 8px;
+        font-family: var(--mono); font-size: 9px;
+        color: var(--text-dim);
+        background: rgba(0,0,0,0.35);
+        padding: 3px 7px; border-radius: 6px;
+        opacity: 0; transition: opacity .3s ease;
+        pointer-events: none; z-index: 2000;
+    }
+    .sync-indicator.show{ opacity: 1; }
+    .sync-indicator.error{ color: var(--red); }
 </style>
 </head>
 <body>
@@ -393,45 +404,10 @@
     </div>
 </div>
 
+<div class="sync-indicator" id="syncIndicator">синхронизация...</div>
+
 <script>
 "use strict";
-
-/* =========================================================
-   ЗВУКИ И ИНТЕГРАЦИЯ С ТГ
-   ========================================================= */
-
-const clickSound = new Audio('https://www.soundjay.com/buttons/sounds/button-16a.mp3');
-clickSound.volume = 0.4;
-
-function playClick() {
-    clickSound.currentTime = 0;
-    clickSound.play().catch(err => {
-        // Ожидание первого взаимодействия с экраном для автовоспроизведения
-    });
-}
-
-// Звук срабатывает при абсолютно любом клике по экрану
-document.addEventListener('click', playClick);
-
-function syncDataWithBot() {
-    let dataToSend = {
-        action: 'update_data',
-        balance: state.balance,
-        inventory: state.portfolio
-    };
-
-    if (state.tg && state.tg.sendData) {
-        try {
-            state.tg.sendData(JSON.stringify(dataToSend));
-        } catch(e) {
-            console.error("Ошибка передачи:", e);
-        }
-    }
-}
-
-// Автоматическая отправка данных при закрытии WebApp или сворачивании вкладки
-window.addEventListener('beforeunload', syncDataWithBot);
-window.addEventListener('pagehide', syncDataWithBot);
 
 /* =========================================================
    КОНФИГУРАЦИЯ
@@ -447,8 +423,13 @@ const RATING_LABELS = {
     AAA: 'Суверенный'
 };
 
+// Множитель выплаты за каждый рейтинговый класс (ужесточённая шкала)
 const RATING_MULTIPLIER = { CCC: 1, B: 1.8, BBB: 4, A: 8, AAA: 18 };
+
+// Вероятность успешного повышения рейтинга при марж. сделке (ужесточено)
 const MARGIN_SUCCESS_CHANCE = { CCC: 65, B: 45, BBB: 28, A: 12 };
+
+// Вероятность того, что сделка закроется в ноль (без прибыли и без убытка)
 const BREAKEVEN_CHANCE = 0.22;
 
 const ASSET_POOLS = {
@@ -494,10 +475,25 @@ const ASSET_POOLS = {
     }
 };
 
+// Тикеры для декоративной бегущей строки
 const TICKER_SYMBOLS = ['BTC','ETH','TON','SOL','AAPL','TSLA','NVDA','BNB','XRP','SPX'];
 
 const STORAGE_KEY_BALANCE   = 'tt_account_balance';
 const STORAGE_KEY_PORTFOLIO = 'tt_open_positions';
+
+// ==== НАСТРОЙКИ СИНХРОНИЗАЦИИ С БОТОМ ====
+// Подставьте сюда реальный адрес вашего бэкенда, который принимает POST
+// и сохраняет данные так, чтобы бот мог их прочитать (например, в БД).
+// НЕ используйте Telegram.WebApp.sendData() для периодической синхронизации —
+// этот метод закрывает Mini App сразу после вызова, это ограничение Telegram API,
+// а не баг. sendData() годится только для одноразовой финальной отправки.
+const SYNC_ENDPOINT = 'https://YOUR_BACKEND_ENDPOINT/api/sync';
+const SYNC_INTERVAL_MS = 8000; // периодическая синхронизация каждые 8 секунд
+const SYNC_DEBOUNCE_MS = 1200; // задержка после изменения баланса перед отправкой
+
+/* =========================================================
+   СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+   ========================================================= */
 
 const state = {
     tg: null,
@@ -506,6 +502,144 @@ const state = {
     balance: 1000,
     marginIndex: null
 };
+
+/* =========================================================
+   ЗВУК ПРИ НАЖАТИЯХ (клик мышью на ПК / тап на телефоне)
+   ========================================================= */
+
+let audioCtx = null;
+
+function ensureAudioContext() {
+    // AudioContext можно создавать только после первого пользовательского
+    // взаимодействия (иначе браузер/Telegram WebView его заблокирует).
+    if (!audioCtx) {
+        try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AC();
+        } catch (err) {
+            console.error('Не удалось создать AudioContext:', err);
+            return null;
+        }
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+    }
+    return audioCtx;
+}
+
+// Короткий синтетический "тик" — без внешних файлов, работает везде одинаково
+function playClickSound() {
+    try {
+        const ctx = ensureAudioContext();
+        if (!ctx) return;
+
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(720, now);
+        osc.frequency.exponentialRampToValueAtTime(340, now + 0.06);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.09);
+    } catch (err) {
+        console.error('Ошибка воспроизведения звука клика:', err);
+    }
+}
+
+// Вешаем звук на ЛЮБое нажатие/тап по всему документу:
+// pointerdown покрывает и клик мышью на ПК, и тап на экране на телефоне.
+function bindClickSound() {
+    document.addEventListener('pointerdown', function (evt) {
+        // Звук только по интерактивным элементам, чтобы не шумело от случайных
+        // тапов по фону. Уберите проверку ниже, если нужен звук вообще на всё.
+        const interactive = evt.target.closest(
+            'button, .basket-item, .portfolio-item, .close-pos, .tab-btn, [onclick]'
+        );
+        if (interactive) playClickSound();
+    }, { passive: true });
+}
+
+/* =========================================================
+   СИНХРОНИЗАЦИЯ БАЛАНСА С TELEGRAM-БОТОМ
+   (без закрытия интерфейса — обычный fetch на бэкенд)
+   ========================================================= */
+
+let syncDebounceTimer = null;
+let syncIntervalTimer = null;
+let syncInFlight = false;
+
+function getInitData() {
+    // initData нужен бэкенду, чтобы проверить подпись и понять, какому
+    // пользователю Telegram принадлежат эти данные (безопасность!).
+    return state.tg && state.tg.initData ? state.tg.initData : '';
+}
+
+function showSyncIndicator(text, isError) {
+    const el = document.getElementById('syncIndicator');
+    el.textContent = text;
+    el.classList.toggle('error', !!isError);
+    el.classList.add('show');
+    clearTimeout(showSyncIndicator._t);
+    showSyncIndicator._t = setTimeout(() => el.classList.remove('show'), 1500);
+}
+
+async function syncDataWithBot() {
+    if (syncInFlight) return; // не накладываем запросы друг на друга
+    const initData = getInitData();
+    if (!initData) {
+        // Вне Telegram (например, тестирование в обычном браузере) —
+        // синхронизацию пропускаем, но интерфейс продолжает работать.
+        return;
+    }
+
+    const payload = {
+        action: 'update_data',
+        balance: state.balance,
+        inventory: state.portfolio,
+        initData: initData
+    };
+
+    syncInFlight = true;
+    try {
+        const response = await fetch(SYNC_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error('Сервер вернул статус ' + response.status);
+        }
+        showSyncIndicator('синхронизировано', false);
+    } catch (err) {
+        // Важно: ошибка сети НЕ должна ломать или закрывать интерфейс —
+        // просто пробуем снова на следующей итерации/следующем изменении.
+        console.error('Ошибка синхронизации баланса с ботом:', err);
+        showSyncIndicator('ошибка синхронизации', true);
+    } finally {
+        syncInFlight = false;
+    }
+}
+
+// Вызывается после каждого изменения баланса/портфеля, но с задержкой,
+// чтобы серия быстрых действий не порождала кучу запросов подряд.
+function scheduleSync() {
+    clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = setTimeout(syncDataWithBot, SYNC_DEBOUNCE_MS);
+}
+
+function startPeriodicSync() {
+    if (syncIntervalTimer) clearInterval(syncIntervalTimer);
+    syncIntervalTimer = setInterval(syncDataWithBot, SYNC_INTERVAL_MS);
+}
 
 /* =========================================================
    ИНИЦИАЛИЗАЦИЯ
@@ -517,6 +651,7 @@ function init() {
         if (state.tg) {
             state.tg.enableClosingConfirmation();
             state.tg.expand();
+            state.tg.ready();
         }
         loadState();
         renderBalance();
@@ -524,7 +659,9 @@ function init() {
         buildTicker();
         bindBasketSelection();
         bindStaticButtons();
+        bindClickSound();
         setInterval(refreshTicker, 4000);
+        startPeriodicSync();
     } catch (err) {
         console.error('Ошибка инициализации терминала:', err);
     }
@@ -549,15 +686,17 @@ function loadState() {
 function persistBalance() {
     try { localStorage.setItem(STORAGE_KEY_BALANCE, String(state.balance)); }
     catch (err) { console.error('Не удалось сохранить баланс:', err); }
+    scheduleSync();
 }
 
 function persistPortfolio() {
     try { localStorage.setItem(STORAGE_KEY_PORTFOLIO, JSON.stringify(state.portfolio)); }
     catch (err) { console.error('Не удалось сохранить портфель:', err); }
+    scheduleSync();
 }
 
 /* =========================================================
-   БЕГУЩАЯ СТРОКА КОТИРОВОК
+   БЕГУЩАЯ СТРОКА КОТИРОВОК (декоративный слой)
    ========================================================= */
 
 function buildTicker() {
@@ -705,14 +844,19 @@ function closePosition(index) {
     }
 }
 
+// Расчёт итога сделки: без штормов и штрафов — либо небольшой разброс вокруг
+// справедливой стоимости, либо (с заданной вероятностью) сделка закрывается
+// строго в ноль — игрок просто возвращает вложенную сумму без прибыли.
 function rollDealOutcome(grossValue, cost) {
     if (Math.random() < BREAKEVEN_CHANCE) {
         return { payout: round2(cost), type: 'breakeven' };
     }
+    // Умеренный разброс без резких обвалов: 0.85x - 1.20x от справедливой стоимости
     const factor = 0.85 + Math.random() * 0.35;
     return { payout: round2(grossValue * factor), type: factor >= 1 ? 'profit' : 'lowyield' };
 }
 
+// Стрелка результата сделки: сравнение итоговой суммы со вложенной
 function resultArrow(payout, cost) {
     if (payout > cost) return '📈';
     if (payout < cost) return '📉';
@@ -720,7 +864,7 @@ function resultArrow(payout, cost) {
 }
 
 /* =========================================================
-   ПОКУПКА ПОРТФЕЛЯ
+   ПОКУПКА ПОРТФЕЛЯ (АНАЛОГ "ОТКРЫТИЯ КЕЙСА")
    ========================================================= */
 
 function bindBasketSelection() {
@@ -818,6 +962,9 @@ function playOrderAnimation(wonPosition, onComplete) {
     wrapper.style.transform = 'translateX(0px)';
     void wrapper.offsetWidth;
     wrapper.style.transition = 'transform 3.5s cubic-bezier(0.15, 0.85, 0.35, 1)';
+
+    // Контейнер шириной 320px (центр 160px); каждый слот 100px + 4px отступа = 104px.
+    // 25-й слот начинается на 2600px, центр на 2652px -> сдвиг -2492px.
     wrapper.style.transform = 'translateX(-2492px)';
 
     setTimeout(() => {
@@ -827,7 +974,7 @@ function playOrderAnimation(wonPosition, onComplete) {
 }
 
 /* =========================================================
-   МАРЖИНАЛЬНАЯ СДЕЛКА
+   МАРЖИНАЛЬНАЯ СДЕЛКА (АНАЛОГ "АПГРЕЙДА")
    ========================================================= */
 
 function selectForMargin(index) {
