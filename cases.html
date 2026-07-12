@@ -411,7 +411,7 @@ const RATING_LABELS = {
 const RATING_MULTIPLIER = { D: 1, C: 1.8, B: 4, A: 8, S: 18 };
 
 // Вероятность успешного повышения рейтинга при марж. сделке (ужесточено)
-const MARGIN_SUCCESS_CHANCE = { D: 75, C: 65, B: 45, A: 25 };
+const MARGIN_SUCCESS_CHANCE = { D: 65, C: 55, B: 35, A: 25 };
 
 // Вероятность того, что сделка закроется в ноль (без прибыли и без убытка)
 const BREAKEVEN_CHANCE = 0.22;
@@ -976,10 +976,10 @@ function executeInvestment() {
 
 function rollRating() {
     const roll = Math.random() * 100;
-    if (roll <= 40) return 'D';
-    if (roll <= 40) return 'C';
-    if (roll <= 40) return 'B';
-    if (roll <= 40) return 'A';
+    if (roll <= 50) return 'D';
+    if (roll <= 70) return 'C';
+    if (roll <= 85) return 'B';
+    if (roll <= 95) return 'A';
     return 'S';
 }
 
