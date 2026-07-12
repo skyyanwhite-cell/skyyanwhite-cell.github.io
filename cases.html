@@ -117,6 +117,7 @@
         font-size: 11px;
         color: var(--text-dim);
         margin-top: 4px;
+        margin-bottom: 12px;
     }
     .recap-button{
         display: none;
@@ -129,6 +130,19 @@
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
+        width: 100%;
+    }
+    .sync-button{
+        background: var(--surface);
+        border: 1px solid var(--gold);
+        color: var(--gold-bright);
+        width: 100%;
+        padding: 9px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 8px;
     }
 
     /* ---- Корзины активов ---- */
@@ -317,6 +331,7 @@
         <div class="account-amount" id="globalBalance">$1,000</div>
         <div class="account-sub" id="accountSub">Статус: активен</div>
         <button class="recap-button" id="recapButton">Экстренная докапитализация (+$100)</button>
+        <button class="sync-button" onclick="syncDataWithBot()">💾 Сохранить и закрыть</button>
     </div>
 
     <!-- СТРАНИЦА: ИНВЕСТИЦИИ -->
@@ -395,6 +410,40 @@
 "use strict";
 
 /* =========================================================
+   ЗВУКИ И ИНТЕГРАЦИЯ С ТГ
+   ========================================================= */
+
+const clickSound = new Audio('https://www.soundjay.com/buttons/sounds/button-16a.mp3');
+clickSound.volume = 0.4;
+
+function playClick() {
+    clickSound.currentTime = 0;
+    clickSound.play().catch(err => {
+        console.log("Воспроизведение звука ожидает клика по экрану");
+    });
+}
+
+function syncDataWithBot() {
+    let dataToSend = {
+        action: 'update_data',
+        balance: state.balance,
+        inventory: state.portfolio
+    };
+
+    if (state.tg && state.tg.sendData) {
+        try {
+            state.tg.sendData(JSON.stringify(dataToSend));
+        } catch(e) {
+            console.error("Ошибка передачи:", e);
+            showNotice("Ошибка при отправке данных", false);
+        }
+    } else {
+        showNotice("Среда Telegram WebApp недоступна", false);
+    }
+}
+
+
+/* =========================================================
    КОНФИГУРАЦИЯ
    ========================================================= */
 
@@ -408,13 +457,8 @@ const RATING_LABELS = {
     AAA: 'Суверенный'
 };
 
-// Множитель выплаты за каждый рейтинговый класс (ужесточённая шкала)
 const RATING_MULTIPLIER = { CCC: 1, B: 1.8, BBB: 4, A: 8, AAA: 18 };
-
-// Вероятность успешного повышения рейтинга при марж. сделке (ужесточено)
 const MARGIN_SUCCESS_CHANCE = { CCC: 65, B: 45, BBB: 28, A: 12 };
-
-// Вероятность того, что сделка закроется в ноль (без прибыли и без убытка)
 const BREAKEVEN_CHANCE = 0.22;
 
 const ASSET_POOLS = {
@@ -460,15 +504,10 @@ const ASSET_POOLS = {
     }
 };
 
-// Тикеры для декоративной бегущей строки
 const TICKER_SYMBOLS = ['BTC','ETH','TON','SOL','AAPL','TSLA','NVDA','BNB','XRP','SPX'];
 
 const STORAGE_KEY_BALANCE   = 'tt_account_balance';
 const STORAGE_KEY_PORTFOLIO = 'tt_open_positions';
-
-/* =========================================================
-   СОСТОЯНИЕ ПРИЛОЖЕНИЯ
-   ========================================================= */
 
 const state = {
     tg: null,
@@ -496,6 +535,13 @@ function init() {
         bindBasketSelection();
         bindStaticButtons();
         setInterval(refreshTicker, 4000);
+        
+        // Вешаем звук глобально на все кликабельные элементы через делегирование
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.tab-btn, .basket-item, .action-button, .recap-button, .sync-button, .close-pos, .portfolio-item')) {
+                playClick();
+            }
+        });
     } catch (err) {
         console.error('Ошибка инициализации терминала:', err);
     }
@@ -528,7 +574,7 @@ function persistPortfolio() {
 }
 
 /* =========================================================
-   БЕГУЩАЯ СТРОКА КОТИРОВОК (декоративный слой)
+   БЕГУЩАЯ СТРОКА КОТИРОВОК
    ========================================================= */
 
 function buildTicker() {
@@ -676,19 +722,14 @@ function closePosition(index) {
     }
 }
 
-// Расчёт итога сделки: без штормов и штрафов — либо небольшой разброс вокруг
-// справедливой стоимости, либо (с заданной вероятностью) сделка закрывается
-// строго в ноль — игрок просто возвращает вложенную сумму без прибыли.
 function rollDealOutcome(grossValue, cost) {
     if (Math.random() < BREAKEVEN_CHANCE) {
         return { payout: round2(cost), type: 'breakeven' };
     }
-    // Умеренный разброс без резких обвалов: 0.85x - 1.20x от справедливой стоимости
     const factor = 0.85 + Math.random() * 0.35;
     return { payout: round2(grossValue * factor), type: factor >= 1 ? 'profit' : 'lowyield' };
 }
 
-// Стрелка результата сделки: сравнение итоговой суммы со вложенной
 function resultArrow(payout, cost) {
     if (payout > cost) return '📈';
     if (payout < cost) return '📉';
@@ -696,7 +737,7 @@ function resultArrow(payout, cost) {
 }
 
 /* =========================================================
-   ПОКУПКА ПОРТФЕЛЯ (АНАЛОГ "ОТКРЫТИЯ КЕЙСА")
+   ПОКУПКА ПОРТФЕЛЯ
    ========================================================= */
 
 function bindBasketSelection() {
@@ -794,9 +835,6 @@ function playOrderAnimation(wonPosition, onComplete) {
     wrapper.style.transform = 'translateX(0px)';
     void wrapper.offsetWidth;
     wrapper.style.transition = 'transform 3.5s cubic-bezier(0.15, 0.85, 0.35, 1)';
-
-    // Контейнер шириной 320px (центр 160px); каждый слот 100px + 4px отступа = 104px.
-    // 25-й слот начинается на 2600px, центр на 2652px -> сдвиг -2492px.
     wrapper.style.transform = 'translateX(-2492px)';
 
     setTimeout(() => {
@@ -806,7 +844,7 @@ function playOrderAnimation(wonPosition, onComplete) {
 }
 
 /* =========================================================
-   МАРЖИНАЛЬНАЯ СДЕЛКА (АНАЛОГ "АПГРЕЙДА")
+   МАРЖИНАЛЬНАЯ СДЕЛКА
    ========================================================= */
 
 function selectForMargin(index) {
