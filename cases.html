@@ -370,6 +370,15 @@
                 <div class="rating-step" id="step-A"><b>A</b><small>Надёжн.</small></div>
                 <div class="rating-step" id="step-S"><b>S</b><small>Суверен.</small></div>
             </div>
+            <!--
+                ВАЖНО: этот элемент раньше отсутствовал в HTML, хотя JS
+                (selectForMargin / resetMarginSelection) обращался к нему
+                через document.getElementById('ratingCaption').innerHTML.
+                Обращение к incomingElement.innerHTML на null бросало
+                исключение ДО строчки marginBtn.disabled = false — поэтому
+                кнопка "Открыть маржинальную сделку" никогда не включалась.
+            -->
+            <div class="rating-caption" id="ratingCaption">Выберите позицию в портфеле ниже, чтобы открыть маржинальную сделку</div>
             <div class="rating-legend">Шкала кредитного рейтинга актива</div>
             <div class="margin-chance" id="marginChance">Вероятность исполнения: 0%</div>
         </div>
@@ -415,6 +424,7 @@ const MARGIN_SUCCESS_CHANCE = { D: 65, C: 55, B: 35, A: 25 };
 
 // Вероятность того, что сделка закроется в ноль (без прибыли и без убытка)
 const BREAKEVEN_CHANCE = 0.22;
+
 
 const ASSET_POOLS = {
     spot: {
