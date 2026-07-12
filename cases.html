@@ -208,11 +208,11 @@
     .rating-legend{
         font-size: 9.5px; color: var(--text-dim); text-align: center; margin: 4px 0 10px 0;
     }
-    .r-CCC{ background: #262b35 !important; border-color: #3a4150; color: #9aa3b2; }
-    .r-B{ background: rgba(31,174,100,0.15) !important; border-color: var(--green); color: var(--green); }
-    .r-BBB{ background: rgba(59,130,246,0.15) !important; border-color: #3B82F6; color: #7fadf7; }
+    .r-D{ background: #262b35 !important; border-color: #3a4150; color: #9aa3b2; }
+    .r-C{ background: rgba(31,174,100,0.15) !important; border-color: var(--green); color: var(--green); }
+    .r-B{ background: rgba(59,130,246,0.15) !important; border-color: #3B82F6; color: #7fadf7; }
     .r-A{ background: rgba(168,85,247,0.15) !important; border-color: #A855F7; color: #c495fb; }
-    .r-AAA{
+    .r-S{
         background: rgba(201,169,97,0.18) !important; border-color: var(--gold); color: var(--gold-bright);
         animation: pulse-gold 2s infinite ease-in-out;
     }
@@ -301,24 +301,10 @@
         box-shadow: 0 0 12px rgba(201,169,97,0.5);
     }
 
-    /* ---- Индикатор синхронизации ---- */
-    .sync-indicator{
-        position: fixed; top: 8px; right: 8px;
-        font-family: var(--mono); font-size: 9px;
-        color: var(--text-dim);
-        background: rgba(0,0,0,0.35);
-        padding: 3px 7px; border-radius: 6px;
-        opacity: 0; transition: opacity .3s ease;
-        pointer-events: none; z-index: 2000;
-    }
-    .sync-indicator.show{ opacity: 1; }
-    .sync-indicator.error{ color: var(--red); }
 </style>
 </head>
 <body>
 <div class="container">
-
-    <div id="debugBanner" style="background:#3B1F1F;color:#FFD8D8;font-family:var(--mono);font-size:10px;padding:8px;border-radius:6px;margin-bottom:10px;word-break:break-all;">Диагностика загружается...</div>
 
     <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
 
@@ -377,17 +363,15 @@
                 <span id="price-input-label">Текущая оценка: $0</span>
                 <span id="price-output-label">При исполнении: $0</span>
             </div>
-            <div class="rating-caption" id="ratingCaption">Выберите позицию в портфеле ниже, чтобы открыть маржинальную сделку</div>
             <div class="rating-scale">
-                <div class="rating-step" id="step-CCC"><b>CCC</b><small>Спекул.</small></div>
-                <div class="rating-step" id="step-B"><b>B</b><small>Волатил.</small></div>
-                <div class="rating-step" id="step-BBB"><b>BBB</b><small>Стабильн.</small></div>
+                <div class="rating-step" id="step-D"><b>D</b><small>Спекул.</small></div>
+                <div class="rating-step" id="step-C"><b>C</b><small>Волатил.</small></div>
+                <div class="rating-step" id="step-B"><b>B</b><small>Стабильн.</small></div>
                 <div class="rating-step" id="step-A"><b>A</b><small>Надёжн.</small></div>
-                <div class="rating-step" id="step-AAA"><b>AAA</b><small>Суверен.</small></div>
+                <div class="rating-step" id="step-S"><b>S</b><small>Суверен.</small></div>
             </div>
-            <div class="rating-legend">Шкала кредитного рейтинга актива: от спекулятивного (CCC) до суверенного (AAA) — сплошная рамка = ваш актив, пунктирная = цель сделки</div>
+            <div class="rating-legend">Шкала кредитного рейтинга актива</div>
             <div class="margin-chance" id="marginChance">Вероятность исполнения: 0%</div>
-            <div class="margin-warning">При неудаче позиция подлежит принудительной ликвидации</div>
         </div>
         <button class="action-button" id="marginButton" disabled>Открыть маржинальную сделку</button>
     </div>
@@ -406,8 +390,6 @@
     </div>
 </div>
 
-<div class="sync-indicator" id="syncIndicator">синхронизация...</div>
-
 <script>
 "use strict";
 
@@ -415,21 +397,21 @@
    КОНФИГУРАЦИЯ
    ========================================================= */
 
-const RATING_ORDER = ['CCC', 'B', 'BBB', 'A', 'AAA'];
+const RATING_ORDER = ['D', 'C', 'B', 'A', 'S'];
 
 const RATING_LABELS = {
-    CCC: 'Спекулятивный',
-    B:   'Волатильный',
-    BBB: 'Стабильный',
+    D: 'Спекулятивный',
+    C:   'Волатильный',
+    B: 'Стабильный',
     A:   'Надёжный',
-    AAA: 'Суверенный'
+    S: 'Суверенный'
 };
 
 // Множитель выплаты за каждый рейтинговый класс (ужесточённая шкала)
-const RATING_MULTIPLIER = { CCC: 1, B: 1.8, BBB: 4, A: 8, AAA: 18 };
+const RATING_MULTIPLIER = { D: 1, C: 1.8, B: 4, A: 8, S: 18 };
 
 // Вероятность успешного повышения рейтинга при марж. сделке (ужесточено)
-const MARGIN_SUCCESS_CHANCE = { CCC: 65, B: 45, BBB: 28, A: 12 };
+const MARGIN_SUCCESS_CHANCE = { D: 75, C: 65, B: 45, A: 25 };
 
 // Вероятность того, что сделка закроется в ноль (без прибыли и без убытка)
 const BREAKEVEN_CHANCE = 0.22;
@@ -468,11 +450,11 @@ const ASSET_POOLS = {
     fund: {
         label: 'Институц. фонд', icon: '🏦', price: 1200,
         assets: [
-            { ticker: 'BRK.A', name: 'Berkshire Hathaway', baseValue: 1300 },
-            { ticker: 'GOLD',  name: 'Золотой резерв',      baseValue: 2200 },
-            { ticker: 'SWF',   name: 'Суверенный фонд',     baseValue: 4000 },
-            { ticker: 'SPX',   name: 'Индекс S&P 500',      baseValue: 7000 },
-            { ticker: 'PE.1',  name: 'Контрольный пакет',   baseValue: 13000 }
+            { ticker: 'BRK.A', name: 'Berkshire Hathaway', baseValue: 800 },
+            { ticker: 'GOLD',  name: 'Золотой резерв',      baseValue: 1000 },
+            { ticker: 'SWF',   name: 'Суверенный фонд',     baseValue: 2000 },
+            { ticker: 'SPX',   name: 'Индекс S&P 500',      baseValue: 4000 },
+            { ticker: 'PE.1',  name: 'Контрольный пакет',   baseValue: 6000 }
         ]
     }
 };
@@ -588,13 +570,11 @@ function getInitData() {
     return state.tg && state.tg.initData ? state.tg.initData : '';
 }
 
+// Уведомления о синхронизации теперь не показываются игроку на экране —
+// только в консоли разработчика, на случай если понадобится отладка.
 function showSyncIndicator(text, isError) {
-    const el = document.getElementById('syncIndicator');
-    el.textContent = text;
-    el.classList.toggle('error', !!isError);
-    el.classList.add('show');
-    clearTimeout(showSyncIndicator._t);
-    showSyncIndicator._t = setTimeout(() => el.classList.remove('show'), 1500);
+    if (isError) console.warn('[sync]', text);
+    else console.log('[sync]', text);
 }
 
 // ---- 1. ЗАГРУЗКА ПРОФИЛЯ С СЕРВЕРА ПРИ СТАРТЕ ----
@@ -705,20 +685,6 @@ async function init() {
         state.userId = (state.tg && state.tg.initDataUnsafe && state.tg.initDataUnsafe.user)
             ? state.tg.initDataUnsafe.user.id
             : 99999;
-
-        // ---- ВРЕМЕННАЯ ДИАГНОСТИКА (удалите после того, как разберётесь) ----
-        // Показывает прямо на экране, что именно Telegram передал странице.
-        // Уберите этот блок и элемент #debugBanner из HTML, когда проблема будет решена.
-        const debugInfo =
-            'tg найден: ' + (!!state.tg) +
-            ' | initData длина: ' + (state.tg ? (state.tg.initData || '').length : 'n/a') +
-            ' | user: ' + (state.tg && state.tg.initDataUnsafe ? JSON.stringify(state.tg.initDataUnsafe.user || null) : 'n/a') +
-            ' | версия клиента: ' + (state.tg ? state.tg.version : 'n/a') +
-            ' | платформа: ' + (state.tg ? state.tg.platform : 'n/a');
-        console.log('[DEBUG]', debugInfo);
-        const debugBanner = document.getElementById('debugBanner');
-        if (debugBanner) debugBanner.textContent = debugInfo;
-        // ---- КОНЕЦ ВРЕМЕННОЙ ДИАГНОСТИКИ ----
 
         // Сначала показываем то, что уже было сохранено локально (мгновенно,
         // без ожидания сети), затем поверх подтягиваем актуальный профиль с сервера.
@@ -1010,11 +976,11 @@ function executeInvestment() {
 
 function rollRating() {
     const roll = Math.random() * 100;
-    if (roll <= 48) return 'CCC';
-    if (roll <= 75) return 'B';
-    if (roll <= 91) return 'BBB';
-    if (roll <= 98) return 'A';
-    return 'AAA';
+    if (roll <= 40) return 'D';
+    if (roll <= 40) return 'C';
+    if (roll <= 40) return 'B';
+    if (roll <= 40) return 'A';
+    return 'S';
 }
 
 function playOrderAnimation(wonPosition, onComplete) {
