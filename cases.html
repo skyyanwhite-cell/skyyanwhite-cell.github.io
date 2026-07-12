@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кейсы</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 16px;
+            color: var(--tg-theme-text-color);
+            background: var(--tg-theme-bg-color);
+        }
+
+        .container {
+            max-width: 390px;
+            margin: 0 auto;
+        }
+
+        .balance {
+            background: var(--tg-theme-secondary-bg-color);
+            padding: 16px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .balance-amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--tg-theme-button-color);
+        }
+
+        .cases-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .case-item {
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .case-item:hover {
+            transform: scale(1.03);
+        }
+
+        .case-image {
+            width: 100%;
+            height: 100px;
+            object-fit: contain;
+            margin-bottom: 8px;
+        }
+
+        .case-name {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .case-price {
+            color: var(--tg-theme-button-color);
+            font-size: 14px;
+        }
+
+        .inventory {
+            background: var(--tg-theme-secondary-bg-color);
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .inventory h3 {
+            margin: 0 0 12px 0;
+            text-align: center;
+        }
+
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .inventory-item {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+            font-size: 24px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .inventory-item.rare {
+            color: #ff3b30;
+        }
+
+        .inventory-item.epic {
+            color: #5856d6;
+        }
+
+        .inventory-item.legendary {
+            color: #ff9500;
+        }
+
+        .inventory-item .sell-button {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 10px;
+            padding: 2px;
+            border-radius: 0 0 6px 6px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .inventory-item:hover .sell-button {
+            opacity: 1;
+        }
+
+        .open-case-button {
+            width: 100%;
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+
+        .open-case-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .result {
+            background: var(--tg-theme-secondary-bg-color);
+            padding: 16px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 16px;
+            display: none;
+        }
+
+        .win {
+            color: #34c759;
+            font-weight: bold;
+        }
+
+        .lose {
+            color: #ff3b30;
+        }
+
+        .error {
+            color: #ff3b30;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .debug {
+            background: var(--tg-theme-secondary-bg-color);
+            padding: 16px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 12px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .credit-button {
+            display: none;
+            margin-top: 10px;
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .case-opening-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .case-items-container {
+            display: flex;
+            width: 330px; /* Фиксированная ширина для трех предметов */
+            height: 100px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .case-item-animation {
+            min-width: 100px;
+            height: 100px;
+            background: var(--tg-theme-secondary-bg-color);
+            margin: 0 5px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .case-item-animation .item-price {
+            position: absolute;
+            bottom: 5px;
+            font-size: 12px;
+            color: var(--tg-theme-text-color);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .case-item-animation.rare .item-price {
+            color: #ff3b30;
+        }
+
+        .case-item-animation.epic .item-price {
+            color: #5856d6;
+        }
+
+        .case-item-animation.legendary .item-price {
+            color: #ff9500;
+        }
+
+        .case-items-wrapper {
+            display: flex;
+            position: absolute;
+            left: 0;
+            transition: transform 0s linear;
+        }
+
+        .case-selector {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 110px;
+            transform: translateX(-50%);
+            border: 2px solid var(--tg-theme-button-color);
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .case-opening-result {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--tg-theme-secondary-bg-color);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 24px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="balance">
+            <div>Ваш баланс:</div>
+            <div class="balance-amount">10000 монет</div>
+            <button class="credit-button" id="creditButton">Взять кредит (1000 монет)</button>
+        </div>
+
+        <div class="cases-container">
+            <div class="case-item" data-case="basic" data-price="100">
+                <div class="case-image">📦</div>
+                <div class="case-name">Базовый кейс</div>
+                <div class="case-price">100 монет</div>
+            </div>
+            <div class="case-item" data-case="premium" data-price="500">
+                <div class="case-image">💎</div>
+                <div class="case-name">Премиум кейс</div>
+                <div class="case-price">500 монет</div>
+            </div>
+            <div class="case-item" data-case="rare" data-price="1000">
+                <div class="case-image">🌟</div>
+                <div class="case-name">Редкий кейс</div>
+                <div class="case-price">1000 монет</div>
+            </div>
+            <div class="case-item" data-case="epic" data-price="2000">
+                <div class="case-image">🔥</div>
+                <div class="case-name">Эпический кейс</div>
+                <div class="case-price">2000 монет</div>
+            </div>
+        </div>
+
+        <div class="inventory">
+            <h3>Инвентарь</h3>
+            <div class="inventory-grid" id="inventoryGrid">
+                <!-- Здесь будут отображаться предметы из инвентаря -->
+            </div>
+        </div>
+
+        <button class="open-case-button" id="openCaseButton" disabled>Открыть кейс</button>
+
+        <div class="result" id="result"></div>
+        <div class="error" id="error"></div>
+        <div class="debug" id="debug"></div>
+
+        <div class="case-opening-animation" id="caseOpeningAnimation">
+            <div class="case-items-container" id="caseItemsContainer">
+                <!-- Здесь будут отображаться предметы во время анимации открытия кейса -->
+            </div>
+            <div class="case-opening-result" id="caseOpeningResult"></div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация Telegram WebApp
+        let tg = window.Telegram.WebApp;
+        
+        // Проверяем, что WebApp успешно инициализирован
+        if (!tg) {
+            showError('Ошибка инициализации Telegram WebApp');
+            console.error('Telegram WebApp не инициализирован');
+        } else {
+            // Включаем отладку
+            tg.enableClosingConfirmation();
+            tg.expand();
+            
+            // Выводим информацию об инициализации
+            showDebug('Telegram WebApp инициализирован успешно');
+            showDebug('Версия: ' + tg.version);
+            showDebug('Платформа: ' + tg.platform);
+            showDebug('Цветовая схема: ' + tg.colorScheme);
+            
+            // Инициализация темы
+            document.documentElement.style.setProperty('--tg-theme-bg-color', tg.backgroundColor || '#ffffff');
+            document.documentElement.style.setProperty('--tg-theme-text-color', tg.textColor || '#000000');
+            document.documentElement.style.setProperty('--tg-theme-button-color', tg.buttonColor || '#3390ec');
+            document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.buttonTextColor || '#ffffff');
+            document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.secondaryBackgroundColor || '#f0f0f0');
+            document.documentElement.style.setProperty('--tg-theme-hint-color', tg.hintColor || '#999999');
+            
+            // Добавляем обработчик для получения данных от бота
+            tg.onEvent('web_app_data_send', handleBotResponse);
+            
+            // Запрашиваем текущий баланс и инвентарь у бота
+            try {
+                tg.sendData(JSON.stringify({ action: 'get_data' }));
+                showDebug('Запрос данных отправлен');
+            } catch (e) {
+                showError('Ошибка при запросе данных: ' + e.message);
+                showDebug('Ошибка: ' + e.message);
+            }
+        }
+
+        // Предметы для кейсов
+        const ITEMS = {
+            basic: [ // Базовый кейс - 100 монет
+                { name: 'Маленькая монета', emoji: '🪙', rarity: 'common', value: 50 },    // -50
+                { name: 'Средняя монета', emoji: '🪙', rarity: 'common', value: 75 },      // -25
+                { name: 'Обычная монета', emoji: '🪙', rarity: 'common', value: 100 },     // +0
+                { name: 'Мешок монет', emoji: '💰', rarity: 'rare', value: 150 },          // +50
+                { name: 'Сундук монет', emoji: '💰', rarity: 'rare', value: 200 },         // +100
+                { name: 'Кристалл', emoji: '💎', rarity: 'epic', value: 300 },             // +200
+                { name: 'Звезда', emoji: '⭐', rarity: 'legendary', value: 500 }            // +400
+            ],
+            premium: [ // Премиум кейс - 500 монет
+                { name: 'Горсть монет', emoji: '🪙', rarity: 'common', value: 300 },       // -200
+                { name: 'Мешочек монет', emoji: '🪙', rarity: 'common', value: 400 },      // -100
+                { name: 'Мешок монет', emoji: '💰', rarity: 'rare', value: 500 },          // +0
+                { name: 'Большой мешок', emoji: '💰', rarity: 'rare', value: 600 },        // +100
+                { name: 'Сундук золота', emoji: '💎', rarity: 'epic', value: 800 },        // +300
+                { name: 'Алмазный слиток', emoji: '💎', rarity: 'epic', value: 1000 },     // +500
+                { name: 'Золотая звезда', emoji: '⭐', rarity: 'legendary', value: 1500 }   // +1000
+            ],
+            rare: [ // Редкий кейс - 1000 монет
+                { name: 'Мешок серебра', emoji: '🪙', rarity: 'common', value: 600 },      // -400
+                { name: 'Мешок золота', emoji: '💰', rarity: 'common', value: 800 },       // -200
+                { name: 'Сундук монет', emoji: '💰', rarity: 'rare', value: 1000 },        // +0
+                { name: 'Сундук золота', emoji: '💰', rarity: 'rare', value: 1200 },       // +200
+                { name: 'Алмазный куб', emoji: '💎', rarity: 'epic', value: 1500 },        // +500
+                { name: 'Магический кристалл', emoji: '💎', rarity: 'epic', value: 2000 }, // +1000
+                { name: 'Платиновая звезда', emoji: '⭐', rarity: 'legendary', value: 3000 } // +2000
+            ],
+            epic: [ // Эпический кейс - 2000 монет
+                { name: 'Сундук серебра', emoji: '💰', rarity: 'common', value: 1200 },     // -800
+                { name: 'Сундук золота', emoji: '💰', rarity: 'common', value: 1600 },      // -400
+                { name: 'Алмазный осколок', emoji: '💎', rarity: 'rare', value: 2000 },     // +0
+                { name: 'Алмазный кристалл', emoji: '💎', rarity: 'rare', value: 2500 },    // +500
+                { name: 'Магический алмаз', emoji: '💎', rarity: 'epic', value: 3000 },     // +1000
+                { name: 'Звёздный алмаз', emoji: '⭐', rarity: 'epic', value: 4000 },       // +2000
+                { name: 'Космическая звезда', emoji: '🌟', rarity: 'legendary', value: 6000 } // +4000
+            ]
+        };
+
+        // Шансы выпадения предметов разной редкости
+        const RARITY_CHANCES = {
+            common: 0.50,    // 50% шанс
+            rare: 0.30,      // 30% шанс
+            epic: 0.15,      // 15% шанс
+            legendary: 0.05  // 5% шанс
+        };
+
+        // Текущий выбранный кейс
+        let selectedCase = null;
+
+        // Инвентарь игрока
+        let inventory = [];
+
+        function showError(message) {
+            document.getElementById('error').textContent = message;
+            setTimeout(() => {
+                document.getElementById('error').textContent = '';
+            }, 3000);
+        }
+
+        function showDebug(message) {
+            document.getElementById('debug').textContent = message;
+        }
+
+        function showResult(message, isWin) {
+            const resultElement = document.getElementById('result');
+            resultElement.textContent = message;
+            resultElement.className = isWin ? 'result win' : 'result lose';
+            resultElement.style.display = 'block';
+            
+            // Добавляем отладочную информацию
+            showDebug('Показан результат: ' + message + ' (isWin: ' + isWin + ')');
+        }
+
+        // Функция для обновления баланса
+        function updateBalance(newBalance) {
+            const balanceElement = document.querySelector('.balance-amount');
+            const oldBalance = parseInt(balanceElement.textContent);
+            balanceElement.textContent = newBalance + ' монет';
+            
+            // Показываем или скрываем кнопку кредита в зависимости от баланса
+            const creditButton = document.getElementById('creditButton');
+            if (newBalance <= 0) {
+                creditButton.style.display = 'block';
+            } else {
+                creditButton.style.display = 'none';
+            }
+            
+            // Добавляем анимацию изменения баланса
+            if (oldBalance !== newBalance) {
+                balanceElement.style.transition = 'color 0.3s';
+                balanceElement.style.color = newBalance > oldBalance ? '#34c759' : '#ff3b30';
+                setTimeout(() => {
+                    balanceElement.style.transition = 'color 0.3s';
+                    balanceElement.style.color = '';
+                }, 500);
+            }
+            
+            showDebug('Баланс обновлен: ' + newBalance);
+        }
+
+        // Функция для обновления инвентаря
+        function updateInventory(newInventory) {
+            inventory = newInventory;
+            const inventoryGrid = document.getElementById('inventoryGrid');
+            inventoryGrid.innerHTML = '';
+            
+            if (inventory.length === 0) {
+                inventoryGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--tg-theme-hint-color);">Инвентарь пуст</div>';
+                return;
+            }
+            
+            inventory.forEach((item, index) => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'inventory-item ' + item.rarity;
+                itemElement.textContent = item.emoji;
+                itemElement.title = `${item.name} (${item.value} монет)`;
+                
+                // Добавляем кнопку продажи
+                const sellButton = document.createElement('div');
+                sellButton.className = 'sell-button';
+                sellButton.textContent = 'Продать';
+                sellButton.onclick = (e) => {
+                    e.stopPropagation();
+                    sellItem(index);
+                };
+                
+                itemElement.appendChild(sellButton);
+                inventoryGrid.appendChild(itemElement);
+            });
+            
+            showDebug('Инвентарь обновлен: ' + JSON.stringify(inventory));
+        }
+
+        // Функция для выбора кейса
+        function selectCase(caseType) {
+            selectedCase = caseType;
+            const openCaseButton = document.getElementById('openCaseButton');
+            openCaseButton.disabled = false;
+            openCaseButton.textContent = `Открыть ${getCaseName(caseType)} (${getCasePrice(caseType)} монет)`;
+            
+            // Подсвечиваем выбранный кейс
+            document.querySelectorAll('.case-item').forEach(item => {
+                if (item.dataset.case === caseType) {
+                    item.style.border = '2px solid var(--tg-theme-button-color)';
+                } else {
+                    item.style.border = 'none';
+                }
+            });
+            
+            showDebug('Выбран кейс: ' + caseType);
+        }
+
+        // Функция для получения названия кейса
+        function getCaseName(caseType) {
+            switch (caseType) {
+                case 'basic': return 'Базовый кейс';
+                case 'premium': return 'Премиум кейс';
+                case 'rare': return 'Редкий кейс';
+                case 'epic': return 'Эпический кейс';
+                default: return 'Неизвестный кейс';
+            }
+        }
+
+        // Функция для получения цены кейса
+        function getCasePrice(caseType) {
+            switch (caseType) {
+                case 'basic': return 100;
+                case 'premium': return 500;
+                case 'rare': return 1000;
+                case 'epic': return 2000;
+                default: return 0;
+            }
+        }
+
+        // Функция для открытия кейса
+        function openCase() {
+            if (!selectedCase) {
+                showError('Выберите кейс для открытия!');
+                return;
+            }
+            
+            const casePrice = getCasePrice(selectedCase);
+            const balanceElement = document.querySelector('.balance-amount');
+            const currentBalance = parseInt(balanceElement.textContent);
+            
+            if (currentBalance < casePrice) {
+                showError('Недостаточно средств для открытия кейса!');
+                return;
+            }
+            
+            // Скрываем предыдущий результат
+            document.getElementById('result').style.display = 'none';
+            
+            // Отключаем кнопку открытия кейса
+            document.getElementById('openCaseButton').disabled = true;
+            
+            // Генерируем случайный предмет из кейса
+            const item = getRandomItem(selectedCase);
+            
+            // Создаем копию предмета для инвентаря
+            const inventoryItem = {...item};
+            
+            // Показываем анимацию открытия кейса
+            showCaseOpeningAnimation(item, () => {
+                // Обновляем баланс (только вычитаем стоимость кейса)
+                const newBalance = currentBalance - casePrice;
+                updateBalance(newBalance);
+                
+                // Добавляем точную копию предмета в инвентарь
+                inventory.push(inventoryItem);
+                updateInventory(inventory);
+                
+                // Показываем результат
+                showResult(`Вы получили: ${inventoryItem.name}`, true);
+                
+                // Отправляем данные боту для сохранения
+                try {
+                    const data = {
+                        action: 'update_data',
+                        balance: newBalance,
+                        inventory: inventory,
+                        won_item: inventoryItem
+                    };
+                    tg.sendData(JSON.stringify(data));
+                    showDebug('Отправлены данные боту: ' + JSON.stringify(data));
+                } catch (e) {
+                    showError('Ошибка при сохранении данных: ' + e.message);
+                    showDebug('Ошибка отправки данных боту: ' + e.message);
+                }
+                
+                // Включаем кнопку открытия кейса
+                document.getElementById('openCaseButton').disabled = false;
+            });
+        }
+
+        // Функция для получения случайного предмета из кейса
+        function getRandomItem(caseType) {
+            const items = ITEMS[caseType];
+            
+            // Определяем редкость предмета на основе шансов
+            const rarityRoll = Math.random();
+            let selectedRarity;
+            
+            if (rarityRoll < RARITY_CHANCES.legendary) {
+                selectedRarity = 'legendary';
+            } else if (rarityRoll < RARITY_CHANCES.legendary + RARITY_CHANCES.epic) {
+                selectedRarity = 'epic';
+            } else if (rarityRoll < RARITY_CHANCES.legendary + RARITY_CHANCES.epic + RARITY_CHANCES.rare) {
+                selectedRarity = 'rare';
+            } else {
+                selectedRarity = 'common';
+            }
+            
+            // Фильтруем предметы по выбранной редкости
+            const rarityItems = items.filter(item => item.rarity === selectedRarity);
+            
+            // Выбираем случайный предмет из отфильтрованных
+            const selectedItem = rarityItems[Math.floor(Math.random() * rarityItems.length)];
+            
+            // Создаем новый объект, чтобы избежать проблем с ссылками
+            return {
+                name: selectedItem.name,
+                emoji: selectedItem.emoji,
+                rarity: selectedItem.rarity,
+                value: selectedItem.value
+            };
+        }
+
+        // Функция для показа анимации открытия кейса
+        function showCaseOpeningAnimation(item, callback) {
+            const animationContainer = document.getElementById('caseOpeningAnimation');
+            const itemsContainer = document.getElementById('caseItemsContainer');
+            
+            // Очищаем контейнер
+            itemsContainer.innerHTML = '';
+            
+            // Создаем обертку для предметов
+            const itemsWrapper = document.createElement('div');
+            itemsWrapper.className = 'case-items-wrapper';
+            itemsContainer.appendChild(itemsWrapper);
+            
+            // Создаем селектор выигрыша
+            const selector = document.createElement('div');
+            selector.className = 'case-selector';
+            itemsContainer.appendChild(selector);
+            
+            // Генерируем случайные предметы для анимации (больше предметов для длинной анимации)
+            const animationItems = [];
+            const possibleItems = [];
+            
+            // Собираем все возможные предметы из всех кейсов
+            Object.values(ITEMS).forEach(caseItems => {
+                caseItems.forEach(caseItem => {
+                    if (!possibleItems.some(existing => 
+                        existing.emoji === caseItem.emoji && 
+                        existing.rarity === caseItem.rarity
+                    )) {
+                        possibleItems.push({...caseItem});
+                    }
+                });
+            });
+            
+            // Генерируем случайные предметы для анимации
+            for (let i = 0; i < 100; i++) {
+                const randomItem = {...possibleItems[Math.floor(Math.random() * possibleItems.length)]};
+                animationItems.push(randomItem);
+            }
+            
+            // Заменяем последние несколько предметов на выигранный, чтобы создать иллюзию замедления на нужном предмете
+            for (let i = 0; i < 3; i++) {
+                animationItems[animationItems.length - 1 - i] = {...item};
+            }
+            
+            // Создаем элементы для анимации
+            animationItems.forEach(animItem => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'case-item-animation ' + animItem.rarity;
+                
+                // Создаем контейнер для эмодзи
+                const emojiContainer = document.createElement('div');
+                emojiContainer.textContent = animItem.emoji;
+                itemElement.appendChild(emojiContainer);
+                
+                // Добавляем цену
+                const priceElement = document.createElement('div');
+                priceElement.className = 'item-price';
+                priceElement.textContent = animItem.value + ' 💰';
+                itemElement.appendChild(priceElement);
+                
+                itemsWrapper.appendChild(itemElement);
+            });
+            
+            // Показываем анимацию
+            animationContainer.style.display = 'flex';
+            
+            // Начальное положение (немного правее)
+            itemsWrapper.style.transform = 'translateX(100px)';
+            
+            // Форсируем перерисовку
+            void itemsWrapper.offsetWidth;
+            
+            // Запускаем анимацию
+            setTimeout(() => {
+                // Первая быстрая фаза
+                itemsWrapper.style.transition = 'transform 3s cubic-bezier(0.1, 0, 0.9, 1)';
+                itemsWrapper.style.transform = 'translateX(-5000px)';
+                
+                // Через 3 секунды запускаем фазу замедления
+                setTimeout(() => {
+                    // Вычисляем конечную позицию так, чтобы выигранный предмет оказался по центру
+                    const finalPosition = -(animationItems.length - 3) * 110;
+                    itemsWrapper.style.transition = 'transform 4s cubic-bezier(0.3, 0.2, 0, 1)';
+                    itemsWrapper.style.transform = `translateX(${finalPosition}px)`;
+                    
+                    // После завершения анимации
+                    setTimeout(() => {
+                        // Добавляем эффект подсветки выигрыша
+                        const winningItem = itemsWrapper.children[animationItems.length - 1];
+                        winningItem.style.transform = 'scale(1.1)';
+                        winningItem.style.boxShadow = '0 0 20px var(--tg-theme-button-color)';
+                        
+                        // Через 2 секунды скрываем анимацию
+                        setTimeout(() => {
+                            animationContainer.style.display = 'none';
+                            if (callback) callback();
+                        }, 2000);
+                    }, 4000);
+                }, 3000);
+            }, 100);
+        }
+
+        // Функция для обработки ответа от бота
+        function handleBotResponse(event) {
+            try {
+                showDebug('Получен ответ от бота: ' + event);
+                
+                let data;
+                // Если данные в формате JSON строки
+                if (typeof event === 'string') {
+                    try {
+                        // Проверяем, начинается ли строка с префикса web_app_data:
+                        if (event.startsWith('web_app_data:')) {
+                            // Удаляем префикс и парсим JSON
+                            data = JSON.parse(event.substring('web_app_data:'.length));
+                        } else {
+                            // Пытаемся распарсить как обычный JSON
+                            data = JSON.parse(event);
+                        }
+                        showDebug('Распарсенные данные: ' + JSON.stringify(data));
+                    } catch (e) {
+                        showDebug('Ошибка парсинга JSON: ' + e.message);
+                        return;
+                    }
+                } else {
+                    // Если данные уже в формате объекта
+                    data = event;
+                }
+                
+                // Обновляем баланс, если он был передан
+                if (data && typeof data.balance !== 'undefined') {
+                    showDebug('Обновление баланса: ' + data.balance);
+                    updateBalance(data.balance);
+                }
+                
+                // Обновляем инвентарь, если он был передан
+                if (data && Array.isArray(data.inventory)) {
+                    showDebug('Обновление инвентаря: ' + JSON.stringify(data.inventory));
+                    updateInventory(data.inventory);
+                }
+                
+            } catch (e) {
+                showError('Ошибка при обработке ответа от бота: ' + e.message);
+                showDebug('Ошибка обработки: ' + e.message);
+            }
+        }
+
+        // Обработчики событий
+        document.querySelectorAll('.case-item').forEach(item => {
+            item.addEventListener('click', function() {
+                selectCase(this.dataset.case);
+            });
+        });
+
+        document.getElementById('openCaseButton').addEventListener('click', openCase);
+
+        // Обработчик нажатия на кнопку кредита
+        document.getElementById('creditButton').addEventListener('click', function() {
+            const currentBalance = parseInt(document.querySelector('.balance-amount').textContent);
+            if (currentBalance <= 0) {
+                // Добавляем 1000 монет к балансу
+                const newBalance = currentBalance + 1000;
+                updateBalance(newBalance);
+                
+                // Отправляем данные боту для сохранения баланса
+                try {
+                    const data = {
+                        action: 'update_balance',
+                        balance: newBalance,
+                        credit_taken: true
+                    };
+                    tg.sendData(JSON.stringify(data));
+                    showDebug('Отправлены данные о взятии кредита: ' + JSON.stringify(data));
+                } catch (e) {
+                    showError('Ошибка при сохранении баланса: ' + e.message);
+                    showDebug('Ошибка отправки данных боту: ' + e.message);
+                }
+            }
+        });
+
+        // Функция для продажи предмета
+        function sellItem(index) {
+            if (index < 0 || index >= inventory.length) {
+                showError('Предмет не найден!');
+                return;
+            }
+            
+            const item = inventory[index];
+            const balanceElement = document.querySelector('.balance-amount');
+            const currentBalance = parseInt(balanceElement.textContent);
+            
+            // Удаляем предмет из инвентаря
+            inventory.splice(index, 1);
+            
+            // Обновляем баланс
+            const newBalance = currentBalance + item.value;
+            updateBalance(newBalance);
+            
+            // Обновляем инвентарь
+            updateInventory(inventory);
+            
+            // Показываем результат
+            showResult(`Вы продали ${item.name} за ${item.value} монет`, true);
+            
+            // Отправляем данные боту для сохранения
+            try {
+                const data = {
+                    action: 'update_data',
+                    balance: newBalance,
+                    inventory: inventory,
+                    item_sold: item
+                };
+                tg.sendData(JSON.stringify(data));
+                showDebug('Отправлены данные о продаже предмета: ' + JSON.stringify(data));
+            } catch (e) {
+                showError('Ошибка при сохранении данных: ' + e.message);
+                showDebug('Ошибка отправки данных боту: ' + e.message);
+            }
+        }
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Устанавливаем начальный баланс 10000 монет
+                updateBalance(10000);
+                
+                // Запрашиваем данные у бота (для синхронизации)
+                const data = {
+                    action: 'get_data',
+                    inventory: inventory
+                };
+                tg.sendData(JSON.stringify(data));
+                showDebug('Запрошены данные у бота');
+            } catch (e) {
+                showError('Ошибка при инициализации: ' + e.message);
+            }
+        });
+
+        // Обработчик входящих сообщений от бота
+        window.addEventListener('message', function(event) {
+            try {
+                if (event.data && typeof event.data === 'string') {
+                    const data = JSON.parse(event.data);
+                    if (data.balance !== undefined) {
+                        // Обновляем баланс из данных бота
+                        updateBalance(data.balance);
+                        showDebug('Получен баланс от бота: ' + data.balance);
+                    }
+                    if (data.inventory) {
+                        // Обновляем инвентарь из данных бота
+                        inventory = data.inventory;
+                        updateInventory(inventory);
+                        showDebug('Получен инвентарь от бота');
+                    }
+                }
+            } catch (e) {
+                showError('Ошибка при обработке сообщения от бота: ' + e.message);
+            }
+        });
+    </script>
+</body>
+</html> 
