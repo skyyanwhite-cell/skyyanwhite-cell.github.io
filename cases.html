@@ -481,13 +481,14 @@ const TICKER_SYMBOLS = ['BTC','ETH','TON','SOL','AAPL','TSLA','NVDA','BNB','XRP'
 const STORAGE_KEY_BALANCE   = 'tt_account_balance';
 const STORAGE_KEY_PORTFOLIO = 'tt_open_positions';
 
-// ==== НАСТРОЙКИ СИНХРОНИЗАЦИИ С БОТОМ ====
-// Подставьте сюда реальный адрес вашего бэкенда, который принимает POST
-// и сохраняет данные так, чтобы бот мог их прочитать (например, в БД).
+// ==== НАСТРОЙКИ СВЯЗИ С СЕРВЕРОМ БОТА ====
+// Адрес вашего Flask-сервера (сейчас — через ngrok). Обратите внимание:
+// бесплатный ngrok-адрес меняется при каждом перезапуске туннеля — тогда
+// эту строку нужно обновлять заново.
 // НЕ используйте Telegram.WebApp.sendData() для периодической синхронизации —
 // этот метод закрывает Mini App сразу после вызова, это ограничение Telegram API,
 // а не баг. sendData() годится только для одноразовой финальной отправки.
-const SYNC_ENDPOINT = 'https://YOUR_BACKEND_ENDPOINT/api/sync';
+const BASE_URL = 'https://shrimp-tactful-tricycle.ngrok-free.dev';
 const SYNC_INTERVAL_MS = 8000; // периодическая синхронизация каждые 8 секунд
 const SYNC_DEBOUNCE_MS = 1200; // задержка после изменения баланса перед отправкой
 
@@ -497,6 +498,8 @@ const SYNC_DEBOUNCE_MS = 1200; // задержка после изменения
 
 const state = {
     tg: null,
+    userId: null,       // реальный Telegram ID — им баланс привязывается к аккаунту
+    profileLoaded: false, // true после первой успешной загрузки профиля с сервера
     selectedBasket: null,
     portfolio: [],
     balance: 1000,
@@ -575,6 +578,7 @@ function bindClickSound() {
 let syncDebounceTimer = null;
 let syncIntervalTimer = null;
 let syncInFlight = false;
+let profileLoadInFlight = false;
 
 function getInitData() {
     // initData нужен бэкенду, чтобы проверить подпись и понять, какому
@@ -591,27 +595,66 @@ function showSyncIndicator(text, isError) {
     showSyncIndicator._t = setTimeout(() => el.classList.remove('show'), 1500);
 }
 
-async function syncDataWithBot() {
-    if (syncInFlight) return; // не накладываем запросы друг на друга
-    const initData = getInitData();
-    if (!initData) {
-        // Вне Telegram (например, тестирование в обычном браузере) —
-        // синхронизацию пропускаем, но интерфейс продолжает работать.
-        return;
+// ---- 1. ЗАГРУЗКА ПРОФИЛЯ С СЕРВЕРА ПРИ СТАРТЕ ----
+// Именно это привязывает баланс к Telegram-аккаунту, а не к устройству/браузеру:
+// на любом устройстве, где человек открывает бота под тем же Telegram ID,
+// подтянется тот же баланс и тот же портфель с сервера.
+async function loadUserProfileFromServer() {
+    if (!state.userId) return;
+    profileLoadInFlight = true;
+    try {
+        const response = await fetch(
+            `${BASE_URL}/api/get_profile?user_id=${encodeURIComponent(state.userId)}`,
+            { headers: { 'ngrok-skip-browser-warning': 'true' } }
+        );
+        if (!response.ok) throw new Error('Сервер вернул статус ' + response.status);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            state.balance = parseFloat(data.balance);
+            state.portfolio = data.inventory || [];
+            state.profileLoaded = true;
+            persistBalance({ skipSync: true });
+            persistPortfolioLocalOnly();
+            renderBalance();
+            renderPortfolio();
+            showSyncIndicator('профиль загружен', false);
+        }
+    } catch (err) {
+        // Сервер недоступен (например, ngrok-туннель не запущен) — не блокируем
+        // интерфейс, продолжаем на локально сохранённых данных из localStorage.
+        // profileLoaded всё равно ставим true, чтобы периодическая синхронизация
+        // сама подхватила связь с сервером, как только он снова станет доступен.
+        console.error('Не удалось загрузить профиль с сервера:', err);
+        showSyncIndicator('офлайн: локальные данные', true);
+        state.profileLoaded = true;
+    } finally {
+        profileLoadInFlight = false;
     }
+}
+
+// ---- 2. ОТПРАВКА ИЗМЕНЕНИЙ НА СЕРВЕР ----
+async function syncDataWithBot() {
+    if (syncInFlight || profileLoadInFlight) return; // не накладываем запросы друг на друга
+    if (!state.userId) return;
 
     const payload = {
-        action: 'update_data',
+        user_id: state.userId,
         balance: state.balance,
         inventory: state.portfolio,
-        initData: initData
+        // initData прикладываем даже сверх текущей серверной проверки —
+        // пригодится, когда добавите валидацию подписи на бэкенде (см. ниже).
+        initData: getInitData()
     };
 
     syncInFlight = true;
     try {
-        const response = await fetch(SYNC_ENDPOINT, {
+        const response = await fetch(`${BASE_URL}/api/sync`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
             body: JSON.stringify(payload)
         });
 
@@ -632,6 +675,7 @@ async function syncDataWithBot() {
 // Вызывается после каждого изменения баланса/портфеля, но с задержкой,
 // чтобы серия быстрых действий не порождала кучу запросов подряд.
 function scheduleSync() {
+    if (!state.profileLoaded) return; // не отправляем, пока не подтянули стартовый профиль
     clearTimeout(syncDebounceTimer);
     syncDebounceTimer = setTimeout(syncDataWithBot, SYNC_DEBOUNCE_MS);
 }
@@ -645,7 +689,7 @@ function startPeriodicSync() {
    ИНИЦИАЛИЗАЦИЯ
    ========================================================= */
 
-function init() {
+async function init() {
     try {
         state.tg = window.Telegram ? window.Telegram.WebApp : null;
         if (state.tg) {
@@ -653,6 +697,15 @@ function init() {
             state.tg.expand();
             state.tg.ready();
         }
+
+        // Реальный Telegram ID — если открыто вне Telegram (тест в обычном
+        // браузере), используем заглушку 99999, как в вашем примере.
+        state.userId = (state.tg && state.tg.initDataUnsafe && state.tg.initDataUnsafe.user)
+            ? state.tg.initDataUnsafe.user.id
+            : 99999;
+
+        // Сначала показываем то, что уже было сохранено локально (мгновенно,
+        // без ожидания сети), затем поверх подтягиваем актуальный профиль с сервера.
         loadState();
         renderBalance();
         renderPortfolio();
@@ -661,6 +714,8 @@ function init() {
         bindStaticButtons();
         bindClickSound();
         setInterval(refreshTicker, 4000);
+
+        await loadUserProfileFromServer();
         startPeriodicSync();
     } catch (err) {
         console.error('Ошибка инициализации терминала:', err);
@@ -683,16 +738,22 @@ function loadState() {
     }
 }
 
-function persistBalance() {
+function persistBalance(options) {
     try { localStorage.setItem(STORAGE_KEY_BALANCE, String(state.balance)); }
     catch (err) { console.error('Не удалось сохранить баланс:', err); }
-    scheduleSync();
+    if (!options || !options.skipSync) scheduleSync();
 }
 
 function persistPortfolio() {
+    persistPortfolioLocalOnly();
+    scheduleSync();
+}
+
+// Сохраняет портфель только локально, без похода на сервер — используется
+// когда мы САМИ только что получили эти данные с сервера (не нужно отправлять их обратно).
+function persistPortfolioLocalOnly() {
     try { localStorage.setItem(STORAGE_KEY_PORTFOLIO, JSON.stringify(state.portfolio)); }
     catch (err) { console.error('Не удалось сохранить портфель:', err); }
-    scheduleSync();
 }
 
 /* =========================================================
