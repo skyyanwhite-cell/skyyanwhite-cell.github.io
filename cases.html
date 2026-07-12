@@ -117,7 +117,7 @@
         font-size: 11px;
         color: var(--text-dim);
         margin-top: 4px;
-        margin-bottom: 12px;
+        margin-bottom: 4px;
     }
     .recap-button{
         display: none;
@@ -131,18 +131,6 @@
         font-weight: 600;
         cursor: pointer;
         width: 100%;
-    }
-    .sync-button{
-        background: var(--surface);
-        border: 1px solid var(--gold);
-        color: var(--gold-bright);
-        width: 100%;
-        padding: 9px 16px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        margin-top: 8px;
     }
 
     /* ---- Корзины активов ---- */
@@ -331,7 +319,6 @@
         <div class="account-amount" id="globalBalance">$1,000</div>
         <div class="account-sub" id="accountSub">Статус: активен</div>
         <button class="recap-button" id="recapButton">Экстренная докапитализация (+$100)</button>
-        <button class="sync-button" onclick="syncDataWithBot()">💾 Сохранить и закрыть</button>
     </div>
 
     <!-- СТРАНИЦА: ИНВЕСТИЦИИ -->
@@ -419,9 +406,12 @@ clickSound.volume = 0.4;
 function playClick() {
     clickSound.currentTime = 0;
     clickSound.play().catch(err => {
-        console.log("Воспроизведение звука ожидает клика по экрану");
+        // Ожидание первого взаимодействия с экраном для автовоспроизведения
     });
 }
+
+// Звук срабатывает при абсолютно любом клике по экрану
+document.addEventListener('click', playClick);
 
 function syncDataWithBot() {
     let dataToSend = {
@@ -435,13 +425,13 @@ function syncDataWithBot() {
             state.tg.sendData(JSON.stringify(dataToSend));
         } catch(e) {
             console.error("Ошибка передачи:", e);
-            showNotice("Ошибка при отправке данных", false);
         }
-    } else {
-        showNotice("Среда Telegram WebApp недоступна", false);
     }
 }
 
+// Автоматическая отправка данных при закрытии WebApp или сворачивании вкладки
+window.addEventListener('beforeunload', syncDataWithBot);
+window.addEventListener('pagehide', syncDataWithBot);
 
 /* =========================================================
    КОНФИГУРАЦИЯ
@@ -535,13 +525,6 @@ function init() {
         bindBasketSelection();
         bindStaticButtons();
         setInterval(refreshTicker, 4000);
-        
-        // Вешаем звук глобально на все кликабельные элементы через делегирование
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.tab-btn, .basket-item, .action-button, .recap-button, .sync-button, .close-pos, .portfolio-item')) {
-                playClick();
-            }
-        });
     } catch (err) {
         console.error('Ошибка инициализации терминала:', err);
     }
