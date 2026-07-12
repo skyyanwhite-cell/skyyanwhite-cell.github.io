@@ -183,16 +183,30 @@
         font-size: 11.5px; color: var(--text-dim); margin: 14px 0 10px 0; font-family: var(--mono);
     }
 
+    .rating-caption{
+        font-size: 12px; color: var(--text-dim); text-align: center;
+        margin: 4px 0 10px 0; min-height: 16px; line-height: 1.4;
+    }
+    .rating-caption b{ color: var(--gold-bright); }
     .rating-scale{
         display: flex; justify-content: space-between;
         background: var(--surface-2);
-        padding: 5px; border-radius: 20px; margin: 12px 0; gap: 4px;
+        padding: 8px 4px; border-radius: 14px; margin: 12px 0 4px 0; gap: 4px;
     }
     .rating-step{
-        flex: 1; font-size: 10px; padding: 5px 2px; border-radius: 12px;
-        color: var(--text-dim); font-weight: 700; text-align: center;
+        flex: 1; padding: 5px 2px; border-radius: 10px;
+        color: var(--text-dim); text-align: center;
         font-family: var(--mono);
         border: 1px solid transparent;
+        display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .rating-step b{ font-size: 11.5px; font-weight: 700; }
+    .rating-step small{ font-size: 7px; font-weight: 600; letter-spacing: 0.2px; opacity: 0.9; }
+    .rating-step.target{
+        border-color: var(--gold); border-style: dashed; color: var(--gold-bright);
+    }
+    .rating-legend{
+        font-size: 9.5px; color: var(--text-dim); text-align: center; margin: 4px 0 10px 0;
     }
     .r-CCC{ background: #262b35 !important; border-color: #3a4150; color: #9aa3b2; }
     .r-B{ background: rgba(31,174,100,0.15) !important; border-color: var(--green); color: var(--green); }
@@ -215,22 +229,30 @@
     /* ---- Портфель ---- */
     .portfolio{ background: var(--surface); border: 1px solid var(--border); padding: 16px; border-radius: 12px; margin-bottom: 16px; }
     .portfolio h3{ margin: 0 0 12px 0; text-align: center; font-size: 14px; letter-spacing: 0.3px; color: var(--text-dim); text-transform: uppercase; }
-    .portfolio-grid{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .portfolio-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .portfolio-item{
-        border-radius: 9px; padding: 6px; text-align: center; font-size: 24px;
-        position: relative; cursor: pointer; aspect-ratio: 1;
-        display: flex; align-items: center; justify-content: center;
+        border-radius: 10px; padding: 8px 4px 6px 4px; text-align: center;
+        position: relative; cursor: pointer;
+        display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+        gap: 2px;
         background: var(--surface-2);
         border: 1px solid var(--border);
     }
-    .portfolio-item.selected-margin{ border-color: var(--gold) !important; transform: scale(0.96); }
-    .portfolio-item .close-pos{
-        position: absolute; bottom: 0; left: 0; right: 0;
-        background: rgba(0,0,0,0.75); color: #fff; font-size: 8px;
-        padding: 2px 0; border-radius: 0 0 7px 7px; font-family: var(--mono);
-        opacity: 0; transition: opacity .15s;
+    .portfolio-item.selected-margin{ border-color: var(--gold) !important; transform: scale(0.97); }
+    .pos-icon{ font-size: 21px; line-height: 1; }
+    .pos-ticker{ font-family: var(--mono); font-weight: 700; font-size: 11px; }
+    .pos-badge{
+        font-family: var(--mono); font-size: 8.5px; font-weight: 700;
+        padding: 1px 7px; border-radius: 8px; display: inline-block; margin: 1px 0;
     }
-    .portfolio-item:hover .close-pos{ opacity: 1; }
+    .pos-value{ font-family: var(--mono); font-weight: 700; font-size: 10.5px; color: var(--gold-bright); }
+    .close-pos{
+        width: 100%; margin-top: 4px; padding-top: 4px;
+        border-top: 1px dashed var(--border);
+        font-family: var(--mono); font-size: 8.5px; color: var(--text-dim);
+        letter-spacing: 0.3px;
+    }
+    .close-pos:active{ color: var(--red); }
     .empty-portfolio{ grid-column: 1 / -1; text-align: center; color: var(--text-dim); font-size: 12px; padding: 10px 0; }
 
     /* ---- Кнопки ---- */
@@ -292,37 +314,37 @@
 
     <div class="account-card">
         <div class="account-label">Торговый счёт</div>
-        <div class="account-amount" id="globalBalance">$10,000</div>
+        <div class="account-amount" id="globalBalance">$1,000</div>
         <div class="account-sub" id="accountSub">Статус: активен</div>
-        <button class="recap-button" id="recapButton">Экстренная докапитализация (+$1,000)</button>
+        <button class="recap-button" id="recapButton">Экстренная докапитализация (+$100)</button>
     </div>
 
     <!-- СТРАНИЦА: ИНВЕСТИЦИИ -->
     <div id="baskets-page" class="page active">
         <div class="baskets-grid">
-            <div class="basket-item" data-basket="spot" data-price="120">
-                <div class="basket-icon">🪙</div>
+            <div class="basket-item" data-basket="spot" data-price="12">
+                <div class="basket-icon">💵</div>
                 <div class="basket-name">Спот-портфель</div>
                 <div class="basket-desc">Малая капитализация</div>
-                <div class="basket-price">$120</div>
+                <div class="basket-price">$12</div>
             </div>
-            <div class="basket-item" data-basket="liquid" data-price="600">
+            <div class="basket-item" data-basket="liquid" data-price="60">
                 <div class="basket-icon">📊</div>
                 <div class="basket-name">Ликвидный портфель</div>
                 <div class="basket-desc">Средняя капитализация</div>
-                <div class="basket-price">$600</div>
+                <div class="basket-price">$60</div>
             </div>
-            <div class="basket-item" data-basket="growth" data-price="3000">
+            <div class="basket-item" data-basket="growth" data-price="300">
                 <div class="basket-icon">📈</div>
                 <div class="basket-name">Портфель роста</div>
                 <div class="basket-desc">Голубые фишки</div>
-                <div class="basket-price">$3,000</div>
+                <div class="basket-price">$300</div>
             </div>
-            <div class="basket-item" data-basket="fund" data-price="12000">
+            <div class="basket-item" data-basket="fund" data-price="1200">
                 <div class="basket-icon">🏦</div>
                 <div class="basket-name">Институц. фонд</div>
                 <div class="basket-desc">Закрытая подписка</div>
-                <div class="basket-price">$12,000</div>
+                <div class="basket-price">$1,200</div>
             </div>
         </div>
         <button class="action-button" id="investButton" disabled>Выберите портфель</button>
@@ -333,20 +355,22 @@
         <div class="margin-zone">
             <div class="margin-slots">
                 <div class="margin-slot" id="slot-input">❓</div>
-                <div style="font-size: 20px; color: var(--text-dim);">➜</div>
+                <div style="font-size: 20px; color: var(--text-dim);">→</div>
                 <div class="margin-slot" id="slot-output">❓</div>
             </div>
             <div class="margin-prices">
                 <span id="price-input-label">Текущая оценка: $0</span>
                 <span id="price-output-label">При исполнении: $0</span>
             </div>
+            <div class="rating-caption" id="ratingCaption">Выберите позицию в портфеле ниже, чтобы открыть маржинальную сделку</div>
             <div class="rating-scale">
-                <div class="rating-step" id="step-CCC">CCC</div>
-                <div class="rating-step" id="step-B">B</div>
-                <div class="rating-step" id="step-BBB">BBB</div>
-                <div class="rating-step" id="step-A">A</div>
-                <div class="rating-step" id="step-AAA">AAA</div>
+                <div class="rating-step" id="step-CCC"><b>CCC</b><small>Спекул.</small></div>
+                <div class="rating-step" id="step-B"><b>B</b><small>Волатил.</small></div>
+                <div class="rating-step" id="step-BBB"><b>BBB</b><small>Стабильн.</small></div>
+                <div class="rating-step" id="step-A"><b>A</b><small>Надёжн.</small></div>
+                <div class="rating-step" id="step-AAA"><b>AAA</b><small>Суверен.</small></div>
             </div>
+            <div class="rating-legend">Шкала кредитного рейтинга актива: от спекулятивного (CCC) до суверенного (AAA) — сплошная рамка = ваш актив, пунктирная = цель сделки</div>
             <div class="margin-chance" id="marginChance">Вероятность исполнения: 0%</div>
             <div class="margin-warning">При неудаче позиция подлежит принудительной ликвидации</div>
         </div>
@@ -390,62 +414,54 @@ const RATING_MULTIPLIER = { CCC: 1, B: 1.8, BBB: 4, A: 8, AAA: 18 };
 // Вероятность успешного повышения рейтинга при марж. сделке (ужесточено)
 const MARGIN_SUCCESS_CHANCE = { CCC: 65, B: 45, BBB: 28, A: 12 };
 
-// Комиссия биржи, удерживаемая при закрытии позиции
-const EXCHANGE_FEE_RATE = 0.04;
+// Вероятность того, что сделка закроется в ноль (без прибыли и без убытка)
+const BREAKEVEN_CHANCE = 0.22;
 
 const ASSET_POOLS = {
     spot: {
-        label: 'Спот-портфель', icon: '🪙', price: 120,
+        label: 'Спот-портфель', icon: '💵', price: 12,
         assets: [
-            { ticker: 'DOGE', name: 'Dogecoin',  baseValue: 25 },
-            { ticker: 'TRX',  name: 'Tron',       baseValue: 40 },
-            { ticker: 'XRP',  name: 'Ripple',     baseValue: 60 },
-            { ticker: 'ADA',  name: 'Cardano',    baseValue: 100 },
-            { ticker: 'ATOM', name: 'Cosmos',     baseValue: 170 }
+            { ticker: 'DOGE', name: 'Dogecoin',  baseValue: 2.5 },
+            { ticker: 'TRX',  name: 'Tron',       baseValue: 4 },
+            { ticker: 'XRP',  name: 'Ripple',     baseValue: 6 },
+            { ticker: 'ADA',  name: 'Cardano',    baseValue: 10 },
+            { ticker: 'ATOM', name: 'Cosmos',     baseValue: 17 }
         ]
     },
     liquid: {
-        label: 'Ликвидный портфель', icon: '📊', price: 600,
+        label: 'Ликвидный портфель', icon: '📊', price: 60,
         assets: [
-            { ticker: 'TON',  name: 'Toncoin',    baseValue: 220 },
-            { ticker: 'SOL',  name: 'Solana',     baseValue: 300 },
-            { ticker: 'BNB',  name: 'BNB',        baseValue: 430 },
-            { ticker: 'AVAX', name: 'Avalanche',  baseValue: 650 },
-            { ticker: 'LINK', name: 'Chainlink',  baseValue: 1000 }
+            { ticker: 'TON',  name: 'Toncoin',    baseValue: 22 },
+            { ticker: 'SOL',  name: 'Solana',     baseValue: 30 },
+            { ticker: 'BNB',  name: 'BNB',        baseValue: 43 },
+            { ticker: 'AVAX', name: 'Avalanche',  baseValue: 65 },
+            { ticker: 'LINK', name: 'Chainlink',  baseValue: 100 }
         ]
     },
     growth: {
-        label: 'Портфель роста', icon: '📈', price: 3000,
+        label: 'Портфель роста', icon: '📈', price: 300,
         assets: [
-            { ticker: 'ETH',  name: 'Ethereum',   baseValue: 1300 },
-            { ticker: 'AAPL', name: 'Apple Inc.', baseValue: 2200 },
-            { ticker: 'TSLA', name: 'Tesla Inc.', baseValue: 3600 },
-            { ticker: 'NVDA', name: 'NVIDIA',     baseValue: 5800 },
-            { ticker: 'BTC',  name: 'Bitcoin',    baseValue: 9500 }
+            { ticker: 'ETH',  name: 'Ethereum',   baseValue: 130 },
+            { ticker: 'AAPL', name: 'Apple Inc.', baseValue: 220 },
+            { ticker: 'TSLA', name: 'Tesla Inc.', baseValue: 360 },
+            { ticker: 'NVDA', name: 'NVIDIA',     baseValue: 580 },
+            { ticker: 'BTC',  name: 'Bitcoin',    baseValue: 950 }
         ]
     },
     fund: {
-        label: 'Институц. фонд', icon: '🏦', price: 12000,
+        label: 'Институц. фонд', icon: '🏦', price: 1200,
         assets: [
-            { ticker: 'BRK.A', name: 'Berkshire Hathaway', baseValue: 13000 },
-            { ticker: 'GOLD',  name: 'Золотой резерв',      baseValue: 22000 },
-            { ticker: 'SWF',   name: 'Суверенный фонд',     baseValue: 40000 },
-            { ticker: 'SPX',   name: 'Индекс S&P 500',      baseValue: 70000 },
-            { ticker: 'PE.1',  name: 'Контрольный пакет',   baseValue: 130000 }
+            { ticker: 'BRK.A', name: 'Berkshire Hathaway', baseValue: 1300 },
+            { ticker: 'GOLD',  name: 'Золотой резерв',      baseValue: 2200 },
+            { ticker: 'SWF',   name: 'Суверенный фонд',     baseValue: 4000 },
+            { ticker: 'SPX',   name: 'Индекс S&P 500',      baseValue: 7000 },
+            { ticker: 'PE.1',  name: 'Контрольный пакет',   baseValue: 13000 }
         ]
     }
 };
 
 // Тикеры для декоративной бегущей строки
 const TICKER_SYMBOLS = ['BTC','ETH','TON','SOL','AAPL','TSLA','NVDA','BNB','XRP','SPX'];
-
-// Периодические рыночные события, влияющие на денежный остаток счёта
-const MARKET_EVENTS = [
-    { weight: 55, type: 'neutral' },
-    { weight: 15, type: 'bear',  label: 'Рынок штормит', min: 0.06, max: 0.18 },
-    { weight: 20, type: 'bull',  label: 'Локальное ралли', min: 0.03, max: 0.09 },
-    { weight: 10, type: 'tax',   label: 'Комиссия за обслуживание счёта', min: 15, max: 90 }
-];
 
 const STORAGE_KEY_BALANCE   = 'tt_account_balance';
 const STORAGE_KEY_PORTFOLIO = 'tt_open_positions';
@@ -458,7 +474,7 @@ const state = {
     tg: null,
     selectedBasket: null,
     portfolio: [],
-    balance: 10000,
+    balance: 1000,
     marginIndex: null
 };
 
@@ -479,7 +495,6 @@ function init() {
         buildTicker();
         bindBasketSelection();
         bindStaticButtons();
-        setInterval(runMarketTick, 20000);
         setInterval(refreshTicker, 4000);
     } catch (err) {
         console.error('Ошибка инициализации терминала:', err);
@@ -600,17 +615,34 @@ function renderPortfolio() {
     }
 
     state.portfolio.forEach((position, index) => {
+        const value = position.baseValue * RATING_MULTIPLIER[position.rating];
+
         const cell = document.createElement('div');
-        cell.className = `portfolio-item r-${position.rating}`;
+        cell.className = 'portfolio-item';
         if (index === state.marginIndex) cell.classList.add('selected-margin');
-        cell.textContent = position.icon;
+
+        const icon = document.createElement('div');
+        icon.className = 'pos-icon';
+        icon.textContent = position.icon;
+
+        const ticker = document.createElement('div');
+        ticker.className = 'pos-ticker';
+        ticker.textContent = position.ticker;
+
+        const badge = document.createElement('div');
+        badge.className = `pos-badge r-${position.rating}`;
+        badge.textContent = position.rating;
+
+        const value_el = document.createElement('div');
+        value_el.className = 'pos-value';
+        value_el.textContent = formatMoney(value);
 
         const closeBtn = document.createElement('div');
         closeBtn.className = 'close-pos';
-        closeBtn.textContent = `${position.ticker}`;
+        closeBtn.textContent = 'Закрыть позицию';
         closeBtn.onclick = (e) => { e.stopPropagation(); closePosition(index); };
 
-        cell.appendChild(closeBtn);
+        cell.append(icon, ticker, badge, value_el, closeBtn);
         cell.onclick = () => {
             if (document.getElementById('margin-page').classList.contains('active')) {
                 selectForMargin(index);
@@ -624,45 +656,43 @@ function closePosition(index) {
     try {
         if (index === state.marginIndex) resetMarginSelection();
         const position = state.portfolio[index];
+        const cost = position.cost;
         const grossValue = position.baseValue * RATING_MULTIPLIER[position.rating];
 
-        const volatility = rollVolatility();
-        const afterVolatility = grossValue * volatility.factor;
-        const fee = afterVolatility * EXCHANGE_FEE_RATE;
-        const netPayout = round2(afterVolatility - fee);
+        const outcome = rollDealOutcome(grossValue, cost);
 
         state.portfolio.splice(index, 1);
         renderPortfolio();
-        adjustBalance(netPayout);
+        adjustBalance(outcome.payout);
 
-        const feeText = `(комиссия биржи $${fee.toFixed(2)})`;
-        if (volatility.event) {
-            showNotice(`${volatility.event} — позиция закрыта: ${formatMoney(netPayout)} ${feeText}`, netPayout >= grossValue * 0.5);
-        } else {
-            showNotice(`Позиция закрыта: ${formatMoney(netPayout)} ${feeText}`, true);
-        }
+        const arrow = resultArrow(outcome.payout, cost);
+        const message = outcome.type === 'breakeven'
+            ? `${arrow} Сделка закрыта без прибыли: ${formatMoney(outcome.payout)}`
+            : `${arrow} Позиция закрыта: ${formatMoney(outcome.payout)}`;
+        showNotice(message, outcome.payout >= cost);
     } catch (err) {
         console.error('Ошибка закрытия позиции:', err);
         showNotice('Ошибка исполнения ордера на закрытие позиции', false);
     }
 }
 
-// Волатильность, применяемая к цене закрытия конкретной позиции
-function rollVolatility() {
-    const roll = Math.random();
-    if (roll < 0.12) {
-        // Резкая просадка сектора
-        const drop = 0.55 + Math.random() * 0.20; // выплата 55-75% от справедливой стоимости
-        return { factor: drop, event: '⚠️ Рынок штормит' };
+// Расчёт итога сделки: без штормов и штрафов — либо небольшой разброс вокруг
+// справедливой стоимости, либо (с заданной вероятностью) сделка закрывается
+// строго в ноль — игрок просто возвращает вложенную сумму без прибыли.
+function rollDealOutcome(grossValue, cost) {
+    if (Math.random() < BREAKEVEN_CHANCE) {
+        return { payout: round2(cost), type: 'breakeven' };
     }
-    if (roll < 0.20) {
-        // Локальный памп
-        const bump = 1.10 + Math.random() * 0.20; // 110-130%
-        return { factor: bump, event: '🚀 Рыночное ралли' };
-    }
-    // Обычный спред/шум рынка
-    const noise = 0.92 + Math.random() * 0.16; // 92-108%
-    return { factor: noise, event: null };
+    // Умеренный разброс без резких обвалов: 0.85x - 1.20x от справедливой стоимости
+    const factor = 0.85 + Math.random() * 0.35;
+    return { payout: round2(grossValue * factor), type: factor >= 1 ? 'profit' : 'lowyield' };
+}
+
+// Стрелка результата сделки: сравнение итоговой суммы со вложенной
+function resultArrow(payout, cost) {
+    if (payout > cost) return '📈';
+    if (payout < cost) return '📉';
+    return '➖';
 }
 
 /* =========================================================
@@ -710,14 +740,21 @@ function executeInvestment() {
             name: baseAsset.name,
             baseValue: baseAsset.baseValue,
             icon: pool.icon,
-            rating: rating
+            rating: rating,
+            cost: price
         };
 
         playOrderAnimation(wonPosition, () => {
             adjustBalance(-price);
             state.portfolio.push(wonPosition);
             renderPortfolio();
-            showNotice(`Открыта позиция: ${wonPosition.ticker} [${RATING_LABELS[wonPosition.rating]}, ${wonPosition.rating}]`, true);
+
+            const fairValue = wonPosition.baseValue * RATING_MULTIPLIER[wonPosition.rating];
+            const arrow = resultArrow(fairValue, price);
+            showNotice(
+                `${arrow} Открыта позиция: ${wonPosition.ticker} [${RATING_LABELS[wonPosition.rating]}, ${wonPosition.rating}] · оценка ${formatMoney(fairValue)}`,
+                fairValue >= price
+            );
             investBtn.disabled = false;
         });
     } catch (err) {
@@ -790,12 +827,14 @@ function selectForMargin(index) {
 
     const slotOut = document.getElementById('slot-output');
     const marginBtn = document.getElementById('marginButton');
+    const caption = document.getElementById('ratingCaption');
 
     if (!nextRating) {
         document.getElementById('price-output-label').textContent = 'Максимальный рейтинг достигнут';
         slotOut.className = 'margin-slot';
         slotOut.innerHTML = '🏆';
         document.getElementById('marginChance').textContent = 'Вероятность исполнения: —';
+        caption.innerHTML = `${position.ticker}: рейтинг <b>${RATING_LABELS[position.rating]} (${position.rating})</b> — это высший уровень, повышать дальше некуда`;
         marginBtn.disabled = true;
         renderPortfolio();
         return;
@@ -806,9 +845,11 @@ function selectForMargin(index) {
 
     slotOut.className = `margin-slot r-${nextRating}`;
     slotOut.innerHTML = `${position.icon}<span class="rating-tag">${nextRating}</span>`;
+    document.getElementById(`step-${nextRating}`).classList.add('target');
 
     const chance = MARGIN_SUCCESS_CHANCE[position.rating] || 50;
     document.getElementById('marginChance').textContent = `Вероятность исполнения: ${chance}%`;
+    caption.innerHTML = `${position.ticker} сейчас <b>${RATING_LABELS[position.rating]} (${position.rating})</b>. Сделка повышает его до <b>${RATING_LABELS[nextRating]} (${nextRating})</b> — при неудаче позиция ликвидируется`;
 
     marginBtn.disabled = false;
     renderPortfolio();
@@ -826,6 +867,7 @@ function resetMarginSelection() {
     document.getElementById('price-input-label').textContent = 'Текущая оценка: $0';
     document.getElementById('price-output-label').textContent = 'При исполнении: $0';
     document.getElementById('marginChance').textContent = 'Вероятность исполнения: 0%';
+    document.getElementById('ratingCaption').textContent = 'Выберите позицию в портфеле ниже, чтобы открыть маржинальную сделку';
     document.getElementById('marginButton').disabled = true;
     document.querySelectorAll('.rating-step').forEach(s => s.className = 'rating-step');
 }
@@ -858,57 +900,16 @@ function executeMarginTrade() {
 }
 
 /* =========================================================
-   РЫНОЧНЫЕ СОБЫТИЯ (ФОНОВЫЙ ТИК)
-   ========================================================= */
-
-function runMarketTick() {
-    try {
-        const event = pickWeightedEvent();
-        if (event.type === 'neutral') return;
-
-        if (event.type === 'bear') {
-            const pct = event.min + Math.random() * (event.max - event.min);
-            const impact = -round2(Math.abs(state.balance) * pct + 5);
-            adjustBalance(impact);
-            showNotice(`⚠️ ${event.label}: ${formatMoney(impact)} на счёте`, false);
-        } else if (event.type === 'bull') {
-            const pct = event.min + Math.random() * (event.max - event.min);
-            const impact = round2(Math.abs(state.balance) * pct);
-            if (impact > 0) {
-                adjustBalance(impact);
-                showNotice(`📈 ${event.label}: +${formatMoney(impact).replace('$','$')} на счёте`, true);
-            }
-        } else if (event.type === 'tax') {
-            const flat = round2(event.min + Math.random() * (event.max - event.min));
-            adjustBalance(-flat);
-            showNotice(`🏦 ${event.label}: -${formatMoney(flat).replace('-','')}`, false);
-        }
-    } catch (err) {
-        console.error('Ошибка обработки рыночного события:', err);
-    }
-}
-
-function pickWeightedEvent() {
-    const totalWeight = MARKET_EVENTS.reduce((sum, e) => sum + e.weight, 0);
-    let roll = Math.random() * totalWeight;
-    for (const event of MARKET_EVENTS) {
-        if (roll < event.weight) return event;
-        roll -= event.weight;
-    }
-    return MARKET_EVENTS[0];
-}
-
-/* =========================================================
    ЭКСТРЕННАЯ ДОКАПИТАЛИЗАЦИЯ
    ========================================================= */
 
 function executeRecapitalization() {
     try {
         if (state.balance > 0) return;
-        adjustBalance(1000);
+        adjustBalance(100);
         resetMarginSelection();
         renderPortfolio();
-        showNotice('Экстренная докапитализация счёта: +$1,000', true);
+        showNotice('Экстренная докапитализация счёта: +$100', true);
     } catch (err) {
         console.error('Ошибка докапитализации счёта:', err);
     }
