@@ -29,7 +29,6 @@
     }
     .container{ max-width: 400px; margin: 0 auto; }
 
-    /* ---- Тикерная лента ---- */
     .ticker-wrap{
         overflow: hidden;
         background: var(--surface);
@@ -59,7 +58,6 @@
         100%{ transform: translateX(-50%); }
     }
 
-    /* ---- Табы ---- */
     .tabs{ display: flex; gap: 8px; margin-bottom: 14px; }
     .tab-btn{
         flex: 1;
@@ -82,13 +80,12 @@
     .page{ display: none; }
     .page.active{ display: block; }
 
-    /* ---- Счёт ---- */
     .account-card{
         background: linear-gradient(160deg, var(--surface-2), var(--surface));
         border: 1px solid var(--border);
         padding: 18px 16px;
         border-radius: 14px;
-        margin-bottom: 18px;
+        margin-bottom: 14px;
         position: relative;
         overflow: hidden;
     }
@@ -131,142 +128,123 @@
         cursor: pointer;
     }
 
-    /* ---- Корзины активов ---- */
-    .baskets-grid{
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
+    .mentor-box{
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 16px;
+        display: flex;
         gap: 10px;
-        margin-bottom: 16px;
+        align-items: flex-start;
     }
-    .basket-item{
+    .mentor-icon{ font-size: 20px; flex-shrink: 0; line-height: 1.3; }
+    .mentor-body{ min-width: 0; }
+    .mentor-label{
+        font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.6px;
+        color: var(--text-dim); margin-bottom: 3px;
+    }
+    .mentor-text{
+        font-size: 12.5px; line-height: 1.4; color: var(--text);
+        transition: opacity .25s ease;
+    }
+
+    .amount-box{
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 12px;
-        padding: 14px 10px;
-        text-align: center;
-        cursor: pointer;
-        transition: border-color .15s, transform .15s;
+        padding: 14px;
+        margin-bottom: 12px;
     }
-    .basket-item:hover{ transform: translateY(-2px); }
-    .basket-item.selected{ border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
-    .basket-icon{ font-size: 30px; margin-bottom: 6px; }
-    .basket-name{ font-weight: 600; font-size: 13px; margin-bottom: 2px; }
-    .basket-desc{ font-size: 10.5px; color: var(--text-dim); margin-bottom: 6px; }
-    .basket-price{ font-family: var(--mono); color: var(--gold); font-size: 13px; font-weight: 600; }
-
-    /* ---- Маржинальная сделка ---- */
-    .margin-zone{
-        background: var(--surface);
-        border: 1px solid var(--border);
-        padding: 18px;
-        border-radius: 12px;
-        text-align: center;
-        margin-bottom: 16px;
+    .amount-label{
+        font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+        color: var(--text-dim); margin-bottom: 8px;
     }
-    .margin-slots{ display: flex; justify-content: space-around; align-items: center; margin-bottom: 14px; }
-    .margin-slot{
-        width: 66px; height: 66px;
-        border-radius: 10px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 26px;
+    .amount-input-row{ display: flex; align-items: center; gap: 8px; }
+    .amount-currency{ font-family: var(--mono); font-size: 20px; color: var(--gold-bright); font-weight: 700; }
+    .amount-input{
+        flex: 1;
         background: var(--surface-2);
         border: 1px solid var(--border);
-        position: relative;
-    }
-    .margin-slot .rating-tag{
-        position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
-        font-family: var(--mono); font-size: 9px; font-weight: 700;
-        padding: 1px 5px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border);
-    }
-    .margin-prices{
-        display: flex; justify-content: space-between;
-        font-size: 11.5px; color: var(--text-dim); margin: 14px 0 10px 0; font-family: var(--mono);
-    }
-
-    .rating-caption{
-        font-size: 12px; color: var(--text-dim); text-align: center;
-        margin: 4px 0 10px 0; min-height: 16px; line-height: 1.4;
-    }
-    .rating-caption b{ color: var(--gold-bright); }
-    .rating-scale{
-        display: flex; justify-content: space-between;
-        background: var(--surface-2);
-        padding: 8px 4px; border-radius: 14px; margin: 12px 0 4px 0; gap: 4px;
-    }
-    .rating-step{
-        flex: 1; padding: 5px 2px; border-radius: 10px;
-        color: var(--text-dim); text-align: center;
+        border-radius: 8px;
+        padding: 10px 10px;
         font-family: var(--mono);
-        border: 1px solid transparent;
-        display: flex; flex-direction: column; align-items: center; gap: 2px;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        outline: none;
+        min-width: 0;
     }
-    .rating-step b{ font-size: 11.5px; font-weight: 700; }
-    .rating-step small{ font-size: 7px; font-weight: 600; letter-spacing: 0.2px; opacity: 0.9; }
-    .rating-step.target{
-        border-color: var(--gold); border-style: dashed; color: var(--gold-bright);
-    }
-    .rating-legend{
-        font-size: 9.5px; color: var(--text-dim); text-align: center; margin: 4px 0 10px 0;
-    }
-    .r-D{ background: #262b35 !important; border-color: #3a4150; color: #9aa3b2; }
-    .r-C{ background: rgba(31,174,100,0.15) !important; border-color: var(--green); color: var(--green); }
-    .r-B{ background: rgba(59,130,246,0.15) !important; border-color: #3B82F6; color: #7fadf7; }
-    .r-A{ background: rgba(168,85,247,0.15) !important; border-color: #A855F7; color: #c495fb; }
-    .r-S{
-        background: rgba(201,169,97,0.18) !important; border-color: var(--gold); color: var(--gold-bright);
-        animation: pulse-gold 2s infinite ease-in-out;
-    }
-    @keyframes pulse-gold{
-        0%{ box-shadow: 0 0 5px rgba(201,169,97,0.5); }
-        50%{ box-shadow: 0 0 13px rgba(201,169,97,0.8); }
-        100%{ box-shadow: 0 0 5px rgba(201,169,97,0.5); }
-    }
-    .rating-step.active{ transform: scale(1.06); }
-
-    .margin-chance{ font-size: 15px; font-weight: 700; margin: 8px 0; color: var(--gold-bright); font-family: var(--mono); }
-    .margin-warning{ font-size: 10.5px; color: var(--text-dim); margin-top: 4px; }
-
-    /* ---- Портфель ---- */
-    .portfolio{ background: var(--surface); border: 1px solid var(--border); padding: 16px; border-radius: 12px; margin-bottom: 16px; }
-    .portfolio h3{ margin: 0 0 12px 0; text-align: center; font-size: 14px; letter-spacing: 0.3px; color: var(--text-dim); text-transform: uppercase; }
-    .portfolio-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .portfolio-item{
-        border-radius: 10px; padding: 8px 4px 6px 4px; text-align: center;
-        position: relative; cursor: pointer;
-        display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-        gap: 2px;
+    .amount-input:focus{ border-color: var(--gold); }
+    .quick-amounts{ display: flex; gap: 6px; margin-top: 10px; }
+    .quick-chip{
+        flex: 1;
         background: var(--surface-2);
         border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 7px 4px;
+        text-align: center;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--text-dim);
+        cursor: pointer;
     }
-    .portfolio-item.selected-margin{ border-color: var(--gold) !important; transform: scale(0.97); }
-    .pos-icon{ font-size: 21px; line-height: 1; }
-    .pos-ticker{ font-family: var(--mono); font-weight: 700; font-size: 11px; }
-    .pos-badge{
-        font-family: var(--mono); font-size: 8.5px; font-weight: 700;
-        padding: 1px 7px; border-radius: 8px; display: inline-block; margin: 1px 0;
+    .quick-chip:active{ border-color: var(--gold); color: var(--gold-bright); }
+    .payout-info{
+        margin-top: 10px;
+        text-align: center;
+        font-size: 12.5px;
+        color: var(--text-dim);
+        min-height: 16px;
     }
-    .pos-value{ font-family: var(--mono); font-weight: 700; font-size: 10.5px; color: var(--gold-bright); }
-    .close-pos{
-        width: 100%; margin-top: 4px; padding-top: 4px;
-        border-top: 1px dashed var(--border);
-        font-family: var(--mono); font-size: 8.5px; color: var(--text-dim);
-        letter-spacing: 0.3px;
-    }
-    .close-pos:active{ color: var(--red); }
-    .empty-portfolio{ grid-column: 1 / -1; text-align: center; color: var(--text-dim); font-size: 12px; padding: 10px 0; }
+    .payout-info b{ color: var(--gold-bright); font-family: var(--mono); }
 
-    /* ---- Кнопки ---- */
-    .action-button{
-        width: 100%;
-        background: linear-gradient(135deg, var(--gold), #A9853F);
-        color: #14110A;
-        border: none; padding: 14px; border-radius: 10px;
-        font-size: 15px; font-weight: 700; cursor: pointer;
+    .chart-box{
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 8px;
+        margin-bottom: 12px;
+    }
+    .chart-label{
+        font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+        color: var(--text-dim); margin-bottom: 6px; text-align: center;
+    }
+    #marketCanvas{ width: 100%; height: 180px; display: block; }
+
+    .direction-row{ display: flex; gap: 10px; margin-bottom: 6px; }
+    .direction-btn{
+        flex: 1;
+        border: none;
+        border-radius: 10px;
+        padding: 16px 8px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
         letter-spacing: 0.2px;
+        display: flex; flex-direction: column; align-items: center; gap: 4px;
     }
-    .action-button:disabled{ opacity: 0.4; cursor: not-allowed; background: var(--surface-2); color: var(--text-dim); }
+    .direction-btn .dir-arrow{ font-size: 20px; }
+    .direction-btn.up{ background: linear-gradient(135deg, #2BD881, var(--green)); color: #06180F; }
+    .direction-btn.down{ background: linear-gradient(135deg, #F26065, var(--red)); color: #1A0607; }
+    .direction-btn:disabled{ opacity: 0.4; cursor: not-allowed; }
 
-    /* ---- Уведомления ---- */
+    .history-page .history-list{ display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .history-item{
+        display: flex; justify-content: space-between; align-items: center;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 10px; padding: 10px 12px;
+    }
+    .history-left{ display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .history-icon{ font-size: 19px; flex-shrink: 0; }
+    .history-meta{ display: flex; flex-direction: column; min-width: 0; }
+    .history-ticker{ font-family: var(--mono); font-weight: 700; font-size: 12.5px; }
+    .history-time{ font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+    .history-amount{ font-family: var(--mono); font-weight: 700; font-size: 13px; white-space: nowrap; }
+    .history-amount.pos{ color: var(--green); }
+    .history-amount.neg{ color: var(--red); }
+    .empty-history{ text-align: center; color: var(--text-dim); font-size: 12px; padding: 20px 0; }
+
     .notice{
         border: 1px solid var(--border);
         padding: 11px; border-radius: 9px; margin-top: 14px;
@@ -276,29 +254,21 @@
     .notice.lose{ color: var(--red); background: rgba(229,72,77,0.08); }
     .notice.info{ color: var(--gold-bright); background: rgba(201,169,97,0.08); }
 
-    /* ---- Анимация исполнения ордера ---- */
     .order-overlay{
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(4,5,8,0.9); display: none; flex-direction: column;
-        justify-content: center; align-items: center; z-index: 1000; gap: 10px;
+        justify-content: center; align-items: center; z-index: 1000; gap: 14px;
     }
     .order-label{ font-size: 12px; color: var(--text-dim); font-family: var(--mono); letter-spacing: 0.5px; }
-    .roll-container{
-        display: flex; width: 320px; height: 92px; position: relative;
-        overflow: hidden; background: #0D1017; border-radius: 10px; border: 1px solid var(--border);
+    .order-spinner{
+        width: 46px; height: 46px; border-radius: 50%;
+        border: 3px solid var(--surface-2);
+        border-top-color: var(--gold);
+        animation: spin 0.9s linear infinite;
     }
-    .roll-wrapper{ display: flex; position: absolute; left: 0; }
-    .roll-item{
-        min-width: 100px; height: 92px; display: flex; flex-direction: column;
-        justify-content: center; align-items: center; font-size: 30px;
-        flex-shrink: 0; border-radius: 8px; margin: 0 2px; gap: 2px;
-    }
-    .roll-item span{ font-size: 9px; font-family: var(--mono); font-weight: 700; }
-    .roll-selector{
-        position: absolute; left: 50%; transform: translateX(-50%);
-        width: 100px; height: 100%; border: 2px solid var(--gold);
-        box-sizing: border-box; pointer-events: none; z-index: 2;
-        box-shadow: 0 0 12px rgba(201,169,97,0.5);
+    @keyframes spin{ to{ transform: rotate(360deg); } }
+    .order-countdown{
+        font-family: var(--mono); font-size: 26px; font-weight: 700; color: var(--gold-bright);
     }
 
 </style>
@@ -309,8 +279,8 @@
     <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('baskets-page', event)">📊 Инвестиции</button>
-        <button class="tab-btn" onclick="switchTab('margin-page', event)">📈 Маржа</button>
+        <button class="tab-btn active" onclick="switchTab('trade-page', event)">📊 Торговля</button>
+        <button class="tab-btn" onclick="switchTab('history-page', event)">🕓 История</button>
     </div>
 
     <div class="account-card">
@@ -320,191 +290,130 @@
         <button class="recap-button" id="recapButton">Экстренная докапитализация (+$100)</button>
     </div>
 
-    <!-- СТРАНИЦА: ИНВЕСТИЦИИ -->
-    <div id="baskets-page" class="page active">
-        <div class="baskets-grid">
-            <div class="basket-item" data-basket="spot" data-price="12">
-                <div class="basket-icon">💵</div>
-                <div class="basket-name">Спот-портфель</div>
-                <div class="basket-desc">Малая капитализация</div>
-                <div class="basket-price">$12</div>
-            </div>
-            <div class="basket-item" data-basket="liquid" data-price="60">
-                <div class="basket-icon">📊</div>
-                <div class="basket-name">Ликвидный портфель</div>
-                <div class="basket-desc">Средняя капитализация</div>
-                <div class="basket-price">$60</div>
-            </div>
-            <div class="basket-item" data-basket="growth" data-price="300">
-                <div class="basket-icon">📈</div>
-                <div class="basket-name">Портфель роста</div>
-                <div class="basket-desc">Голубые фишки</div>
-                <div class="basket-price">$300</div>
-            </div>
-            <div class="basket-item" data-basket="fund" data-price="1200">
-                <div class="basket-icon">🏦</div>
-                <div class="basket-name">Институц. фонд</div>
-                <div class="basket-desc">Закрытая подписка</div>
-                <div class="basket-price">$1,200</div>
-            </div>
+    <div class="mentor-box">
+        <div class="mentor-icon">🎙️</div>
+        <div class="mentor-body">
+            <div class="mentor-label">Наставник в эфире</div>
+            <div class="mentor-text" id="mentorText">Наблюдаю за рынком, подскажу интересные моменты...</div>
         </div>
-        <button class="action-button" id="investButton" disabled>Выберите портфель</button>
     </div>
 
-    <!-- СТРАНИЦА: МАРЖИНАЛЬНАЯ СДЕЛКА -->
-    <div id="margin-page" class="page">
-        <div class="margin-zone">
-            <div class="margin-slots">
-                <div class="margin-slot" id="slot-input">❓</div>
-                <div style="font-size: 20px; color: var(--text-dim);">→</div>
-                <div class="margin-slot" id="slot-output">❓</div>
+    <div id="trade-page" class="page active">
+
+        <div class="amount-box">
+            <div class="amount-label">Сумма инвестиции</div>
+            <div class="amount-input-row">
+                <span class="amount-currency">$</span>
+                <input type="number" inputmode="decimal" class="amount-input" id="amountInput" placeholder="0" min="1" step="1">
             </div>
-            <div class="margin-prices">
-                <span id="price-input-label">Текущая оценка: $0</span>
-                <span id="price-output-label">При исполнении: $0</span>
+            <div class="quick-amounts">
+                <div class="quick-chip" data-amount="10">$10</div>
+                <div class="quick-chip" data-amount="25">$25</div>
+                <div class="quick-chip" data-amount="50">$50</div>
+                <div class="quick-chip" data-amount="100">$100</div>
             </div>
-            <div class="rating-scale">
-                <div class="rating-step" id="step-D"><b>D</b><span>65%</span></div>
-                <div class="rating-step" id="step-C"><b>C</b><span>55%</span></div>
-                <div class="rating-step" id="step-B"><b>B</b><span>35%</span></div>
-                <div class="rating-step" id="step-A"><b>A</b><span>25%</span></div>
-                <div class="rating-step" id="step-S"><b>S</b><span>MAX</span></div>
-            </div>
-            <!--
-                ВАЖНО: этот элемент раньше отсутствовал в HTML, хотя JS
-                (selectForMargin / resetMarginSelection) обращался к нему
-                через document.getElementById('ratingCaption').innerHTML.
-                Обращение к incomingElement.innerHTML на null бросало
-                исключение ДО строчки marginBtn.disabled = false — поэтому
-                кнопка "Открыть маржинальную сделку" никогда не включалась.
-            -->
-            <div class="rating-caption" id="ratingCaption">Выберите позицию в портфеле ниже, чтобы открыть маржинальную сделку</div>
-            <div class="rating-legend">Шкала кредитного рейтинга актива</div>
-            <div class="margin-chance" id="marginChance">Вероятность исполнения: 0%</div>
+            <div class="payout-info" id="payoutInfo"></div>
         </div>
-        <button class="action-button" id="marginButton" disabled>Открыть маржинальную сделку</button>
+
+        <div class="chart-box">
+            <div class="chart-label">Рыночная лента · цена и объём</div>
+            <canvas id="marketCanvas"></canvas>
+        </div>
+
+        <div class="direction-row">
+            <button class="direction-btn up" id="upButton" disabled>
+                <span class="dir-arrow">▲</span>
+                <span>Вверх</span>
+            </button>
+            <button class="direction-btn down" id="downButton" disabled>
+                <span class="dir-arrow">▼</span>
+                <span>Вниз</span>
+            </button>
+        </div>
+
+        <div class="notice" id="noticeBox"></div>
     </div>
 
-    <!-- ПОРТФЕЛЬ (ОБЩИЙ) -->
-    <div class="portfolio">
-        <h3>Открытые позиции</h3>
-        <div class="portfolio-grid" id="portfolioGrid"></div>
+    <div id="history-page" class="page history-page">
+        <div class="history-list" id="historyList"></div>
     </div>
-
-    <div class="notice" id="noticeBox"></div>
 
     <div class="order-overlay" id="orderOverlay">
-        <div class="order-label">ИСПОЛНЕНИЕ ОРДЕРА...</div>
-        <div class="roll-container" id="rollContainer"></div>
+        <div class="order-label">ОЖИДАНИЕ ЗАКРЫТИЯ СВЕЧИ...</div>
+        <div class="order-spinner"></div>
+        <div class="order-countdown" id="orderCountdown">3</div>
     </div>
 </div>
 
 <script>
 "use strict";
 
-/* =========================================================
-   КОНФИГУРАЦИЯ
-   ========================================================= */
-
-const RATING_ORDER = ['D', 'C', 'B', 'A', 'S'];
-
-const RATING_LABELS = {
-    D: 'Спекулятивный',
-    C:   'Волатильный',
-    B: 'Стабильный',
-    A:   'Надёжный',
-    S: 'Суверенный'
-};
-
-// Множитель выплаты за каждый рейтинговый класс (ужесточённая шкала)
-const RATING_MULTIPLIER = { D: 1, C: 1.8, B: 4, A: 8, S: 18 };
-
-// Вероятность успешного повышения рейтинга при марж. сделке (ужесточено)
-const MARGIN_SUCCESS_CHANCE = { D: 65, C: 55, B: 35, A: 25 };
-
-const ASSET_POOLS = {
-    spot: {
-        label: 'Спот-портфель', icon: '💵', price: 12,
-        assets: [
-            { ticker: 'DOGE', name: 'Dogecoin',  baseValue: 2.5 },
-            { ticker: 'TRX',  name: 'Tron',       baseValue: 4 },
-            { ticker: 'XRP',  name: 'Ripple',     baseValue: 6 },
-            { ticker: 'ADA',  name: 'Cardano',    baseValue: 10 },
-            { ticker: 'ATOM', name: 'Cosmos',     baseValue: 17 }
-        ]
-    },
-    liquid: {
-        label: 'Ликвидный портфель', icon: '📊', price: 60,
-        assets: [
-            { ticker: 'TON',  name: 'Toncoin',    baseValue: 22 },
-            { ticker: 'SOL',  name: 'Solana',     baseValue: 30 },
-            { ticker: 'BNB',  name: 'BNB',        baseValue: 43 },
-            { ticker: 'AVAX', name: 'Avalanche',  baseValue: 65 },
-            { ticker: 'LINK', name: 'Chainlink',  baseValue: 100 }
-        ]
-    },
-    growth: {
-        label: 'Портфель роста', icon: '📈', price: 300,
-        assets: [
-            { ticker: 'ETH',  name: 'Ethereum',   baseValue: 130 },
-            { ticker: 'AAPL', name: 'Apple Inc.', baseValue: 220 },
-            { ticker: 'TSLA', name: 'Tesla Inc.', baseValue: 360 },
-            { ticker: 'NVDA', name: 'NVIDIA',     baseValue: 580 },
-            { ticker: 'BTC',  name: 'Bitcoin',    baseValue: 950 }
-        ]
-    },
-    fund: {
-        label: 'Институц. фонд', icon: '🏦', price: 1200,
-        assets: [
-            { ticker: 'BRK.A', name: 'Berkshire Hathaway', baseValue: 800 },
-            { ticker: 'GOLD',  name: 'Золотой резерв',      baseValue: 1000 },
-            { ticker: 'SWF',   name: 'Суверенный фонд',     baseValue: 2000 },
-            { ticker: 'SPX',   name: 'Индекс S&P 500',      baseValue: 4000 },
-            { ticker: 'PE.1',  name: 'Контрольный пакет',   baseValue: 6000 }
-        ]
-    }
-};
-
-// Тикеры для декоративной бегущей строки
 const TICKER_SYMBOLS = ['BTC','ETH','TON','SOL','AAPL','TSLA','NVDA','BNB','XRP','SPX'];
 
-const STORAGE_KEY_BALANCE   = 'tt_account_balance';
-const STORAGE_KEY_PORTFOLIO = 'tt_open_positions';
+const MENTOR_TIPS = [
+    '📈 Замечаю рост интереса к рынку — движение оживилось',
+    '🔴 Крупные игроки временно фиксируют прибыль, будьте внимательны',
+    '💬 На деске обсуждают текущий тренд — движение может ускориться',
+    '🟢 Настроение на рынке умеренно оптимистичное сегодня',
+    '⚠️ Волатильность выше обычной — управляйте размером сделки разумно',
+    '📊 Институционалы присматриваются к текущему диапазону цен',
+    '🕯️ Свечи на ленте показывают консолидацию перед движением',
+    '💡 Разумная стратегия — не вкладывать весь депозит в одну сделку',
+    '🔍 На объёмах заметна активность — кто-то накапливает позицию',
+    '🌐 Глобальный сентимент сегодня смешанный, действуйте осторожно',
+    '📉 После коррекции часто открываются интересные точки входа',
+    '🏦 Крупные фонды снова в центре внимания трейдеров',
+    '🔥 Ликвидность на рынке заметно выросла за последний час',
+    '🧭 Хорошая привычка — не гнаться за упущенным движением',
+    '📌 Отмечаю повышенный интерес к текущему инструменту',
+    '🕊️ Рынок относительно спокоен — время для взвешенных решений',
+    '💭 Многие трейдеры сегодня наблюдают, а не торгуют — тоже стратегия',
+    '⚡ Резкие движения возможны в любой момент, держите баланс под контролем',
+    '🎯 Дисциплина важнее удачи в долгосрочной перспективе',
+    '🌊 Заметна волна интереса к текущему направлению',
+    '🧊 Рынок в боковике — часто перед этим готовится сильное движение',
+    '🪙 Короткие сделки традиционно волатильнее — учитывайте это',
+    '📐 Разумный размер ставки снижает общий риск',
+    '🕰️ Утренние часы часто дают спокойные условия для входа',
+    '🌙 Вечерняя сессия обычно менее ликвидна, будьте аккуратны',
+    '🧩 Каждая сделка — отдельное решение, не гонитесь за прошлым результатом',
+    '📣 На рынке слухи о повышенном спросе на рискованные активы',
+    '🛡️ Управление риском — основа устойчивой стратегии',
+    '🚦 Смешанные сигналы на рынке — разумно действовать осторожно',
+    '🌤️ В целом фон сегодня скорее нейтральный',
+    '🧠 Хладнокровие часто ценнее, чем скорость реакции',
+    '📚 Изучайте свою историю сделок — какие ставки работают лучше остальных',
+    '🪜 Постепенное увеличение ставки часто разумнее разовой крупной суммы',
+    '🎢 На рынке сегодня повышенная амплитуда движений',
+    '🧮 Не забывайте оценивать соотношение риска и потенциальной прибыли',
+    '🛰️ Крупные фонды традиционно двигают рынок медленнее, но увереннее',
+    '🍃 Спокойный день — хорошее время для анализа, а не спешки',
+    '🔔 Обратите внимание на изменение объёма — часто это ранний сигнал',
+    '🧱 Стабильные движения сегодня выглядят увереннее резких скачков',
+    '🗺️ Рынок ведёт себя по-разному в течение дня — следите за балансом рисков'
+];
 
-// ==== НАСТРОЙКИ СВЯЗИ С СЕРВЕРОМ БОТА ====
-// Адрес вашего Flask-сервера (сейчас — через ngrok). Обратите внимание:
-// бесплатный ngrok-адрес меняется при каждом перезапуске туннеля — тогда
-// эту строку нужно обновлять заново.
-// НЕ используйте Telegram.WebApp.sendData() для периодической синхронизации —
-// этот метод закрывает Mini App сразу после вызова, это ограничение Telegram API,
-// а не баг. sendData() годится только для одноразовой финальной отправки.
+const STORAGE_KEY_BALANCE = 'tt_account_balance';
+const STORAGE_KEY_HISTORY = 'tt_trade_history';
+const MAX_HISTORY_ITEMS = 60;
+
 const BASE_URL = 'https://shrimp-tactful-tricycle.ngrok-free.dev';
-const SYNC_INTERVAL_MS = 8000; // периодическая синхронизация каждые 8 секунд
-const SYNC_DEBOUNCE_MS = 1200; // задержка после изменения баланса перед отправкой
-
-/* =========================================================
-   СОСТОЯНИЕ ПРИЛОЖЕНИЯ
-   ========================================================= */
+const SYNC_INTERVAL_MS = 8000;
+const SYNC_DEBOUNCE_MS = 1200;
 
 const state = {
     tg: null,
-    userId: null,       // реальный Telegram ID — им баланс привязывается к аккаунту
-    profileLoaded: false, // true после первой успешной загрузки профиля с сервера
-    selectedBasket: null,
-    portfolio: [],
+    userId: null,
+    profileLoaded: false,
+    history: [],
     balance: 1000,
-    marginIndex: null
+    currentPayoutPercent: null,
+    tradeInProgress: false
 };
-
-/* =========================================================
-   ЗВУК ПРИ НАЖАТИЯХ (клик мышью на ПК / тап на телефоне)
-   ========================================================= */
 
 let audioCtx = null;
 
 function ensureAudioContext() {
-    // AudioContext можно создавать только после первого пользовательского
-    // взаимодействия (иначе браузер/Telegram WebView его заблокирует).
     if (!audioCtx) {
         try {
             const AC = window.AudioContext || window.webkitAudioContext;
@@ -520,7 +429,6 @@ function ensureAudioContext() {
     return audioCtx;
 }
 
-// Короткий синтетический "тик" — без внешних файлов, работает везде одинаково
 function playClickSound() {
     try {
         const ctx = ensureAudioContext();
@@ -547,23 +455,14 @@ function playClickSound() {
     }
 }
 
-// Вешаем звук на ЛЮБое нажатие/тап по всему документу:
-// pointerdown покрывает и клик мышью на ПК, и тап на экране на телефоне.
 function bindClickSound() {
     document.addEventListener('pointerdown', function (evt) {
-        // Звук только по интерактивным элементам, чтобы не шумело от случайных
-        // тапов по фону. Уберите проверку ниже, если нужен звук вообще на всё.
         const interactive = evt.target.closest(
-            'button, .basket-item, .portfolio-item, .close-pos, .tab-btn, [onclick]'
+            'button, .quick-chip, .tab-btn, [onclick]'
         );
         if (interactive) playClickSound();
     }, { passive: true });
 }
-
-/* =========================================================
-   СИНХРОНИЗАЦИЯ БАЛАНСА С TELEGRAM-БОТОМ
-   (без закрытия интерфейса — обычный fetch на бэкенд)
-   ========================================================= */
 
 let syncDebounceTimer = null;
 let syncIntervalTimer = null;
@@ -571,22 +470,14 @@ let syncInFlight = false;
 let profileLoadInFlight = false;
 
 function getInitData() {
-    // initData нужен бэкенду, чтобы проверить подпись и понять, какому
-    // пользователю Telegram принадлежат эти данные (безопасность!).
     return state.tg && state.tg.initData ? state.tg.initData : '';
 }
 
-// Уведомления о синхронизации теперь не показываются игроку на экране —
-// только в консоли разработчика, на случай если понадобится отладка.
 function showSyncIndicator(text, isError) {
     if (isError) console.warn('[sync]', text);
     else console.log('[sync]', text);
 }
 
-// ---- 1. ЗАГРУЗКА ПРОФИЛЯ С СЕРВЕРА ПРИ СТАРТЕ ----
-// Именно это привязывает баланс к Telegram-аккаунту, а не к устройству/браузеру:
-// на любом устройстве, где человек открывает бота под тем же Telegram ID,
-// подтянется тот же баланс и тот же портфель с сервера.
 async function loadUserProfileFromServer() {
     if (!state.userId) return;
     profileLoadInFlight = true;
@@ -600,19 +491,15 @@ async function loadUserProfileFromServer() {
 
         if (data.status === 'success') {
             state.balance = parseFloat(data.balance);
-            state.portfolio = data.inventory || [];
+            state.history = data.history || [];
             state.profileLoaded = true;
             persistBalance({ skipSync: true });
-            persistPortfolioLocalOnly();
+            persistHistoryLocalOnly();
             renderBalance();
-            renderPortfolio();
+            renderHistory();
             showSyncIndicator('профиль загружен', false);
         }
     } catch (err) {
-        // Сервер недоступен (например, ngrok-туннель не запущен) — не блокируем
-        // интерфейс, продолжаем на локально сохранённых данных из localStorage.
-        // profileLoaded всё равно ставим true, чтобы периодическая синхронизация
-        // сама подхватила связь с сервером, как только он снова станет доступен.
         console.error('Не удалось загрузить профиль с сервера:', err);
         showSyncIndicator('офлайн: локальные данные', true);
         state.profileLoaded = true;
@@ -621,17 +508,14 @@ async function loadUserProfileFromServer() {
     }
 }
 
-// ---- 2. ОТПРАВКА ИЗМЕНЕНИЙ НА СЕРВЕР ----
 async function syncDataWithBot() {
-    if (syncInFlight || profileLoadInFlight) return; // не накладываем запросы друг на друга
+    if (syncInFlight || profileLoadInFlight) return;
     if (!state.userId) return;
 
     const payload = {
         user_id: state.userId,
         balance: state.balance,
-        inventory: state.portfolio,
-        // initData прикладываем даже сверх текущей серверной проверки —
-        // пригодится, когда добавите валидацию подписи на бэкенде (см. ниже).
+        history: state.history,
         initData: getInitData()
     };
 
@@ -646,24 +530,18 @@ async function syncDataWithBot() {
             body: JSON.stringify(payload)
         });
 
-        if (!response.ok) {
-            throw new Error('Сервер вернул статус ' + response.status);
-        }
+        if (!response.ok) throw new Error('Сервер вернул статус ' + response.status);
         showSyncIndicator('синхронизировано', false);
     } catch (err) {
-        // Важно: ошибка сети НЕ должна ломать или закрывать интерфейс —
-        // просто пробуем снова на следующей итерации/следующем изменении.
-        console.error('Ошибка синхронизации баланса с ботом:', err);
+        console.error('Ошибка синхронизации с ботом:', err);
         showSyncIndicator('ошибка синхронизации', true);
     } finally {
         syncInFlight = false;
     }
 }
 
-// Вызывается после каждого изменения баланса/портфеля, но с задержкой,
-// чтобы серия быстрых действий не порождала кучу запросов подряд.
 function scheduleSync() {
-    if (!state.profileLoaded) return; // не отправляем, пока не подтянули стартовый профиль
+    if (!state.profileLoaded) return;
     clearTimeout(syncDebounceTimer);
     syncDebounceTimer = setTimeout(syncDataWithBot, SYNC_DEBOUNCE_MS);
 }
@@ -672,10 +550,6 @@ function startPeriodicSync() {
     if (syncIntervalTimer) clearInterval(syncIntervalTimer);
     syncIntervalTimer = setInterval(syncDataWithBot, SYNC_INTERVAL_MS);
 }
-
-/* =========================================================
-   ИНИЦИАЛИЗАЦИЯ
-   ========================================================= */
 
 async function init() {
     try {
@@ -686,21 +560,21 @@ async function init() {
             state.tg.ready();
         }
 
-        // Реальный Telegram ID — если открыто вне Telegram (тест в обычном
-        // браузере), используем заглушку 99999, как в вашем примере.
         state.userId = (state.tg && state.tg.initDataUnsafe && state.tg.initDataUnsafe.user)
             ? state.tg.initDataUnsafe.user.id
             : 99999;
 
-        // Сначала показываем то, что уже было сохранено локально (мгновенно,
-        // без ожидания сети), затем поверх подтягиваем актуальный профиль с сервера.
         loadState();
         renderBalance();
-        renderPortfolio();
+        renderHistory();
         buildTicker();
-        bindBasketSelection();
+        bindAmountInput();
+        bindQuickAmounts();
+        bindDirectionButtons();
         bindStaticButtons();
         bindClickSound();
+        initMarketChart();
+        scheduleMentorTip(true);
         setInterval(refreshTicker, 4000);
 
         await loadUserProfileFromServer();
@@ -718,11 +592,11 @@ function loadState() {
         console.error('Не удалось прочитать баланс счёта:', err);
     }
     try {
-        const savedPortfolio = localStorage.getItem(STORAGE_KEY_PORTFOLIO);
-        state.portfolio = savedPortfolio ? JSON.parse(savedPortfolio) : [];
+        const savedHistory = localStorage.getItem(STORAGE_KEY_HISTORY);
+        state.history = savedHistory ? JSON.parse(savedHistory) : [];
     } catch (err) {
-        console.error('Не удалось прочитать портфель:', err);
-        state.portfolio = [];
+        console.error('Не удалось прочитать историю операций:', err);
+        state.history = [];
     }
 }
 
@@ -732,21 +606,15 @@ function persistBalance(options) {
     if (!options || !options.skipSync) scheduleSync();
 }
 
-function persistPortfolio() {
-    persistPortfolioLocalOnly();
+function persistHistory() {
+    persistHistoryLocalOnly();
     scheduleSync();
 }
 
-// Сохраняет портфель только локально, без похода на сервер — используется
-// когда мы САМИ только что получили эти данные с сервера (не нужно отправлять их обратно).
-function persistPortfolioLocalOnly() {
-    try { localStorage.setItem(STORAGE_KEY_PORTFOLIO, JSON.stringify(state.portfolio)); }
-    catch (err) { console.error('Не удалось сохранить портфель:', err); }
+function persistHistoryLocalOnly() {
+    try { localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(state.history)); }
+    catch (err) { console.error('Не удалось сохранить историю операций:', err); }
 }
-
-/* =========================================================
-   БЕГУЩАЯ СТРОКА КОТИРОВОК (декоративный слой)
-   ========================================================= */
 
 function buildTicker() {
     const track = document.getElementById('tickerTrack');
@@ -770,23 +638,187 @@ function refreshTicker() {
     try { buildTicker(); } catch (err) { console.error('Ошибка обновления котировок:', err); }
 }
 
-/* =========================================================
-   НАВИГАЦИЯ ПО ВКЛАДКАМ
-   ========================================================= */
+let lastMentorIndex = -1;
+
+function scheduleMentorTip(immediate) {
+    if (immediate) showRandomMentorTip();
+    const delay = randomBetween(2 * 60 * 1000, 7 * 60 * 1000);
+    setTimeout(() => {
+        showRandomMentorTip();
+        scheduleMentorTip(false);
+    }, delay);
+}
+
+function showRandomMentorTip() {
+    const el = document.getElementById('mentorText');
+    if (!el) return;
+    let idx;
+    do { idx = Math.floor(Math.random() * MENTOR_TIPS.length); }
+    while (idx === lastMentorIndex && MENTOR_TIPS.length > 1);
+    lastMentorIndex = idx;
+
+    el.style.opacity = '0';
+    setTimeout(() => {
+        el.textContent = MENTOR_TIPS[idx];
+        el.style.opacity = '1';
+    }, 200);
+}
+
+function randomBetween(min, max) {
+    return min + Math.random() * (max - min);
+}
+
+function bindAmountInput() {
+    const input = document.getElementById('amountInput');
+    input.addEventListener('input', handleAmountChange);
+}
+
+function bindQuickAmounts() {
+    document.querySelectorAll('.quick-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.getElementById('amountInput').value = chip.dataset.amount;
+            handleAmountChange();
+        });
+    });
+}
+
+function handleAmountChange() {
+    const amount = getEnteredAmount();
+    const upBtn = document.getElementById('upButton');
+    const downBtn = document.getElementById('downButton');
+    const payoutInfo = document.getElementById('payoutInfo');
+
+    if (amount > 0) {
+        state.currentPayoutPercent = Math.floor(randomBetween(80, 90));
+        payoutInfo.innerHTML = `Текущая доходность сделки: <b>${state.currentPayoutPercent}%</b>`;
+        upBtn.disabled = false;
+        downBtn.disabled = false;
+    } else {
+        state.currentPayoutPercent = null;
+        payoutInfo.textContent = '';
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+    }
+}
+
+function getEnteredAmount() {
+    const raw = parseFloat(document.getElementById('amountInput').value);
+    if (isNaN(raw) || raw <= 0) return 0;
+    return round2(raw);
+}
+
+let marketCandles = [];
+let marketChartTimer = null;
+
+function initMarketChart() {
+    marketCandles = generateInitialCandles(34);
+    drawMarketChart();
+    if (marketChartTimer) clearInterval(marketChartTimer);
+    marketChartTimer = setInterval(tickMarketChart, 2500);
+    window.addEventListener('resize', drawMarketChart);
+}
+
+function generateInitialCandles(n) {
+    let price = 100;
+    const arr = [];
+    for (let i = 0; i < n; i++) {
+        const candle = buildNextCandle(price);
+        arr.push(candle);
+        price = candle.c;
+    }
+    return arr;
+}
+
+function buildNextCandle(openPrice) {
+    const open = openPrice;
+    const change = (Math.random() - 0.48) * (open * 0.03 + 1);
+    let close = open + change;
+    if (close < 5) close = 5 + Math.random() * 3;
+    const high = Math.max(open, close) + Math.random() * (open * 0.015 + 0.5);
+    const low = Math.max(1, Math.min(open, close) - Math.random() * (open * 0.015 + 0.5));
+    const volume = 15 + Math.random() * 85;
+    return { o: open, h: high, l: low, c: close, v: volume };
+}
+
+function tickMarketChart() {
+    if (state.tradeInProgress) return;
+    const last = marketCandles[marketCandles.length - 1];
+    const next = buildNextCandle(last.c);
+    marketCandles.push(next);
+    if (marketCandles.length > 34) marketCandles.shift();
+    drawMarketChart();
+}
+
+function drawMarketChart() {
+    const canvas = document.getElementById('marketCanvas');
+    if (!canvas || marketCandles.length === 0) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.clientWidth || 320;
+    const cssHeight = canvas.clientHeight || 180;
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+    const priceAreaH = cssHeight * 0.68;
+    const volumeAreaTop = cssHeight * 0.72;
+    const volumeAreaH = cssHeight * 0.28;
+
+    const highs = marketCandles.map(c => c.h);
+    const lows = marketCandles.map(c => c.l);
+    const maxPrice = Math.max(...highs);
+    const minPrice = Math.min(...lows);
+    const priceRange = Math.max(maxPrice - minPrice, 0.01);
+
+    const maxVolume = Math.max(...marketCandles.map(c => c.v), 1);
+
+    const n = marketCandles.length;
+    const slotWidth = cssWidth / n;
+    const bodyWidth = Math.max(2, slotWidth * 0.55);
+
+    marketCandles.forEach((candle, i) => {
+        const x = i * slotWidth + slotWidth / 2;
+        const up = candle.c >= candle.o;
+        const color = up ? getCssVar('--green') : getCssVar('--red');
+
+        const yHigh = priceAreaH - ((candle.h - minPrice) / priceRange) * priceAreaH;
+        const yLow = priceAreaH - ((candle.l - minPrice) / priceRange) * priceAreaH;
+        const yOpen = priceAreaH - ((candle.o - minPrice) / priceRange) * priceAreaH;
+        const yClose = priceAreaH - ((candle.c - minPrice) / priceRange) * priceAreaH;
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, yHigh);
+        ctx.lineTo(x, yLow);
+        ctx.stroke();
+
+        const bodyTop = Math.min(yOpen, yClose);
+        const bodyHeight = Math.max(1.5, Math.abs(yClose - yOpen));
+        ctx.fillStyle = color;
+        ctx.fillRect(x - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
+
+        const volHeight = (candle.v / maxVolume) * volumeAreaH;
+        ctx.globalAlpha = 0.55;
+        ctx.fillRect(x - bodyWidth / 2, volumeAreaTop + (volumeAreaH - volHeight), bodyWidth, volHeight);
+        ctx.globalAlpha = 1;
+    });
+}
+
+function getCssVar(name) {
+    return getComputedStyle(document.body).getPropertyValue(name).trim() || '#888';
+}
 
 function switchTab(pageId, evt) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
     if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
-    resetMarginSelection();
-    renderPortfolio();
+    if (pageId === 'history-page') renderHistory();
     hideNotice();
 }
-
-/* =========================================================
-   СЧЁТ / БАЛАНС
-   ========================================================= */
 
 function renderBalance() {
     const el = document.getElementById('globalBalance');
@@ -813,321 +845,185 @@ function formatMoney(value) {
     return sign + '$' + Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
 }
 
+function formatSignedMoney(value) {
+    const sign = value >= 0 ? '+' : '-';
+    return sign + '$' + Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
+}
+
 function round2(value) {
     return Math.round(value * 100) / 100;
 }
 
-/* =========================================================
-   ПОРТФЕЛЬ (ОТКРЫТЫЕ ПОЗИЦИИ)
-   ========================================================= */
+function bindDirectionButtons() {
+    document.getElementById('upButton').addEventListener('click', () => placeTrade('up'));
+    document.getElementById('downButton').addEventListener('click', () => placeTrade('down'));
+}
 
-function renderPortfolio() {
-    persistPortfolio();
-    const grid = document.getElementById('portfolioGrid');
-    grid.innerHTML = '';
+function placeTrade(direction) {
+    try {
+        if (state.tradeInProgress) return;
+        const amount = getEnteredAmount();
+        if (amount <= 0) {
+            showNotice('Укажите сумму инвестиции', false);
+            return;
+        }
+        if (amount > state.balance) {
+            showNotice('Недостаточно средств на счёте для этой сделки', false);
+            return;
+        }
+        if (!state.currentPayoutPercent) {
+            state.currentPayoutPercent = Math.floor(randomBetween(80, 90));
+        }
 
-    if (state.portfolio.length === 0) {
-        grid.innerHTML = '<div class="empty-portfolio">Открытых позиций нет</div>';
+        state.tradeInProgress = true;
+        document.getElementById('upButton').disabled = true;
+        document.getElementById('downButton').disabled = true;
+
+        adjustBalance(-amount);
+
+        runTradeCountdown(() => resolveTrade(direction, amount, state.currentPayoutPercent));
+    } catch (err) {
+        console.error('Ошибка открытия сделки:', err);
+        showNotice('Ошибка исполнения ордера', false);
+        state.tradeInProgress = false;
+    }
+}
+
+function runTradeCountdown(onComplete) {
+    const overlay = document.getElementById('orderOverlay');
+    const countdownEl = document.getElementById('orderCountdown');
+    let secondsLeft = 3;
+    countdownEl.textContent = secondsLeft;
+    overlay.style.display = 'flex';
+
+    const timer = setInterval(() => {
+        secondsLeft -= 1;
+        if (secondsLeft > 0) {
+            countdownEl.textContent = secondsLeft;
+        } else {
+            clearInterval(timer);
+            overlay.style.display = 'none';
+            onComplete();
+        }
+    }, 1000);
+}
+
+function resolveTrade(direction, amount, payoutPercent) {
+    try {
+        const last = marketCandles[marketCandles.length - 1];
+        const nextCandle = buildNextCandle(last.c);
+        marketCandles.push(nextCandle);
+        if (marketCandles.length > 34) marketCandles.shift();
+        drawMarketChart();
+
+        const candleWentUp = nextCandle.c >= nextCandle.o;
+        const won = (direction === 'up' && candleWentUp) || (direction === 'down' && !candleWentUp);
+
+        let netChange;
+        if (won) {
+            const profit = round2(amount * (payoutPercent / 100));
+            netChange = amount + profit;
+            adjustBalance(netChange);
+        } else {
+            netChange = -amount;
+        }
+
+        addHistoryEntry(direction, amount, netChange);
+
+        const arrow = direction === 'up' ? '▲' : '▼';
+        if (won) {
+            showNotice(`${arrow} Сделка выиграна: ${formatSignedMoney(netChange)}`, true);
+        } else {
+            showNotice(`${arrow} Сделка проиграна: ${formatSignedMoney(netChange)}`, false);
+        }
+
+        state.tradeInProgress = false;
+        document.getElementById('upButton').disabled = getEnteredAmount() <= 0;
+        document.getElementById('downButton').disabled = getEnteredAmount() <= 0;
+    } catch (err) {
+        console.error('Ошибка резолва сделки:', err);
+        showNotice('Ошибка исполнения ордера', false);
+        state.tradeInProgress = false;
+    }
+}
+
+function addHistoryEntry(direction, amount, netChange) {
+    state.history.unshift({
+        direction: direction,
+        amount: amount,
+        profit: netChange,
+        timestamp: Date.now()
+    });
+    if (state.history.length > MAX_HISTORY_ITEMS) {
+        state.history.length = MAX_HISTORY_ITEMS;
+    }
+    persistHistory();
+    if (document.getElementById('history-page').classList.contains('active')) {
+        renderHistory();
+    }
+}
+
+function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (!list) return;
+    list.innerHTML = '';
+
+    if (state.history.length === 0) {
+        list.innerHTML = '<div class="empty-history">Операций пока нет</div>';
         return;
     }
 
-    state.portfolio.forEach((position, index) => {
-        const value = position.baseValue * RATING_MULTIPLIER[position.rating];
+    state.history.forEach(entry => {
+        const row = document.createElement('div');
+        row.className = 'history-item';
 
-        const cell = document.createElement('div');
-        cell.className = 'portfolio-item';
-        if (index === state.marginIndex) cell.classList.add('selected-margin');
+        const left = document.createElement('div');
+        left.className = 'history-left';
 
         const icon = document.createElement('div');
-        icon.className = 'pos-icon';
-        icon.textContent = position.icon;
+        icon.className = 'history-icon';
+        icon.textContent = entry.direction === 'up' ? '▲' : '▼';
 
-        const ticker = document.createElement('div');
-        ticker.className = 'pos-ticker';
-        ticker.textContent = position.ticker;
+        const meta = document.createElement('div');
+        meta.className = 'history-meta';
 
-        const badge = document.createElement('div');
-        badge.className = `pos-badge r-${position.rating}`;
-        badge.textContent = position.rating;
+        const tickerEl = document.createElement('div');
+        tickerEl.className = 'history-ticker';
+        tickerEl.textContent = `${entry.direction === 'up' ? 'Вверх' : 'Вниз'} · ${formatMoney(entry.amount)}`;
 
-        const value_el = document.createElement('div');
-        value_el.className = 'pos-value';
-        value_el.textContent = formatMoney(value);
-
-        const closeBtn = document.createElement('div');
-        closeBtn.className = 'close-pos';
-        closeBtn.textContent = 'Закрыть позицию';
-        closeBtn.onclick = (e) => { e.stopPropagation(); closePosition(index); };
-
-        cell.append(icon, ticker, badge, value_el, closeBtn);
-        cell.onclick = () => {
-            if (document.getElementById('margin-page').classList.contains('active')) {
-                selectForMargin(index);
-            }
-        };
-        grid.appendChild(cell);
-    });
-}
-
-function closePosition(index) {
-    try {
-        if (index === state.marginIndex) resetMarginSelection();
-        const position = state.portfolio[index];
-        const cost = position.cost;
-        const grossValue = position.baseValue * RATING_MULTIPLIER[position.rating];
-
-        const outcome = rollDealOutcome(grossValue, cost);
-
-        state.portfolio.splice(index, 1);
-        renderPortfolio();
-        adjustBalance(outcome.payout);
-
-        const arrow = resultArrow(outcome.payout, cost);
-        showNotice(`${arrow} Позиция закрыта: ${formatMoney(outcome.payout)}`, outcome.payout >= cost);
-    } catch (err) {
-        console.error('Ошибка закрытия позиции:', err);
-        showNotice('Ошибка исполнения ордера на закрытие позиции', false);
-    }
-}
-
-// Расчёт итога сделки: умеренный разброс вокруг справедливой стоимости,
-// без штормов и штрафов. Механика "закрыть строго в ноль" убрана —
-// теперь исход всегда обычный разброс 0.85x - 1.20x от справедливой стоимости.
-function rollDealOutcome(grossValue, cost) {
-    const factor = 0.85 + Math.random() * 0.35;
-    return { payout: round2(grossValue * factor), type: factor >= 1 ? 'profit' : 'lowyield' };
-}
-
-// Стрелка результата сделки: сравнение итоговой суммы со вложенной
-function resultArrow(payout, cost) {
-    if (payout > cost) return '📈';
-    if (payout < cost) return '📉';
-    return '➖';
-}
-
-/* =========================================================
-   ПОКУПКА ПОРТФЕЛЯ (АНАЛОГ "ОТКРЫТИЯ КЕЙСА")
-   ========================================================= */
-
-function bindBasketSelection() {
-    document.querySelectorAll('.basket-item').forEach(item => {
-        item.addEventListener('click', function () {
-            state.selectedBasket = this.dataset.basket;
-            const price = parseInt(this.dataset.price, 10);
-            const investBtn = document.getElementById('investButton');
-            investBtn.disabled = false;
-            investBtn.textContent = `Инвестировать $${price.toLocaleString('en-US')}`;
-            document.querySelectorAll('.basket-item').forEach(b => b.classList.remove('selected'));
-            this.classList.add('selected');
+        const timeEl = document.createElement('div');
+        timeEl.className = 'history-time';
+        timeEl.textContent = new Date(entry.timestamp).toLocaleString(undefined, {
+            day: '2-digit', month: '2-digit',
+            hour: '2-digit', minute: '2-digit'
         });
+
+        meta.append(tickerEl, timeEl);
+        left.append(icon, meta);
+
+        const amountEl = document.createElement('div');
+        const isPositive = entry.profit >= 0;
+        amountEl.className = `history-amount ${isPositive ? 'pos' : 'neg'}`;
+        amountEl.textContent = formatSignedMoney(entry.profit);
+
+        row.append(left, amountEl);
+        list.appendChild(row);
     });
 }
 
 function bindStaticButtons() {
-    document.getElementById('investButton').addEventListener('click', executeInvestment);
-    document.getElementById('marginButton').addEventListener('click', executeMarginTrade);
     document.getElementById('recapButton').addEventListener('click', executeRecapitalization);
 }
-
-function executeInvestment() {
-    try {
-        if (!state.selectedBasket) return;
-        const pool = ASSET_POOLS[state.selectedBasket];
-        const price = pool.price;
-
-        if (state.balance < price) {
-            showNotice('Недостаточно средств на счёте для этой сделки', false);
-            return;
-        }
-
-        const investBtn = document.getElementById('investButton');
-        investBtn.disabled = true;
-
-        const baseAsset = pool.assets[Math.floor(Math.random() * pool.assets.length)];
-        const rating = rollRating();
-        const wonPosition = {
-            ticker: baseAsset.ticker,
-            name: baseAsset.name,
-            baseValue: baseAsset.baseValue,
-            icon: pool.icon,
-            rating: rating,
-            cost: price
-        };
-
-        playOrderAnimation(wonPosition, () => {
-            adjustBalance(-price);
-            state.portfolio.push(wonPosition);
-            renderPortfolio();
-
-            const fairValue = wonPosition.baseValue * RATING_MULTIPLIER[wonPosition.rating];
-            const arrow = resultArrow(fairValue, price);
-            showNotice(
-                `${arrow} Открыта позиция: ${wonPosition.ticker} [${RATING_LABELS[wonPosition.rating]}, ${wonPosition.rating}] · оценка ${formatMoney(fairValue)}`,
-                fairValue >= price
-            );
-            investBtn.disabled = false;
-        });
-    } catch (err) {
-        console.error('Ошибка исполнения инвестиции:', err);
-        showNotice('Ошибка исполнения ордера', false);
-    }
-}
-
-function rollRating() {
-    const roll = Math.random() * 100;
-    if (roll <= 50) return 'D';
-    if (roll <= 70) return 'C';
-    if (roll <= 85) return 'B';
-    if (roll <= 95) return 'A';
-    return 'S';
-}
-
-function playOrderAnimation(wonPosition, onComplete) {
-    const overlay = document.getElementById('orderOverlay');
-    const container = document.getElementById('rollContainer');
-    container.innerHTML = '<div class="roll-wrapper" id="rollWrapper"></div><div class="roll-selector"></div>';
-    const wrapper = document.getElementById('rollWrapper');
-
-    const allAssets = Object.values(ASSET_POOLS).flatMap(p => p.assets.map(a => ({ ...a, icon: p.icon })));
-
-    for (let i = 0; i < 30; i++) {
-        const isWinningSlot = (i === 25);
-        const randomAsset = allAssets[Math.floor(Math.random() * allAssets.length)];
-        const randomRating = RATING_ORDER[Math.floor(Math.random() * RATING_ORDER.length)];
-        const cell = document.createElement('div');
-        cell.className = `roll-item r-${isWinningSlot ? wonPosition.rating : randomRating}`;
-        cell.innerHTML = `<div>${isWinningSlot ? wonPosition.icon : randomAsset.icon}</div><span>${isWinningSlot ? wonPosition.ticker : randomAsset.ticker}</span>`;
-        wrapper.appendChild(cell);
-    }
-
-    overlay.style.display = 'flex';
-    wrapper.style.transform = 'translateX(0px)';
-    void wrapper.offsetWidth;
-    wrapper.style.transition = 'transform 3.5s cubic-bezier(0.15, 0.85, 0.35, 1)';
-
-    // Контейнер шириной 320px (центр 160px); каждый слот 100px + 4px отступа = 104px.
-    // 25-й слот начинается на 2600px, центр на 2652px -> сдвиг -2492px.
-    wrapper.style.transform = 'translateX(-2492px)';
-
-    setTimeout(() => {
-        overlay.style.display = 'none';
-        onComplete();
-    }, 3600);
-}
-
-/* =========================================================
-   МАРЖИНАЛЬНАЯ СДЕЛКА (АНАЛОГ "АПГРЕЙДА")
-   ========================================================= */
-
-function selectForMargin(index) {
-    state.marginIndex = index;
-    const position = state.portfolio[index];
-    const currentIdx = RATING_ORDER.indexOf(position.rating);
-    const nextRating = RATING_ORDER[currentIdx + 1];
-
-    document.querySelectorAll('.rating-step').forEach(s => s.className = 'rating-step');
-    document.getElementById(`step-${position.rating}`).classList.add(`r-${position.rating}`, 'active');
-
-    const currentValue = position.baseValue * RATING_MULTIPLIER[position.rating];
-    document.getElementById('price-input-label').textContent = `Текущая оценка: ${formatMoney(currentValue)}`;
-
-    const slotIn = document.getElementById('slot-input');
-    slotIn.className = `margin-slot r-${position.rating}`;
-    slotIn.innerHTML = `${position.icon}<span class="rating-tag">${position.rating}</span>`;
-
-    const slotOut = document.getElementById('slot-output');
-    const marginBtn = document.getElementById('marginButton');
-    const caption = document.getElementById('ratingCaption');
-
-    if (!nextRating) {
-        document.getElementById('price-output-label').textContent = 'Максимальный рейтинг достигнут';
-        slotOut.className = 'margin-slot';
-        slotOut.innerHTML = '🏆';
-        document.getElementById('marginChance').textContent = 'Вероятность исполнения: —';
-        caption.innerHTML = `${position.ticker}: рейтинг <b>${RATING_LABELS[position.rating]} (${position.rating})</b> — это высший уровень, повышать дальше некуда`;
-        marginBtn.disabled = true;
-        renderPortfolio();
-        return;
-    }
-
-    const nextValue = position.baseValue * RATING_MULTIPLIER[nextRating];
-    document.getElementById('price-output-label').textContent = `При исполнении: ${formatMoney(nextValue)}`;
-
-    slotOut.className = `margin-slot r-${nextRating}`;
-    slotOut.innerHTML = `${position.icon}<span class="rating-tag">${nextRating}</span>`;
-    document.getElementById(`step-${nextRating}`).classList.add('target');
-
-    const chance = MARGIN_SUCCESS_CHANCE[position.rating] || 50;
-    document.getElementById('marginChance').textContent = `Вероятность исполнения: ${chance}%`;
-    caption.innerHTML = `${position.ticker} сейчас <b>${RATING_LABELS[position.rating]} (${position.rating})</b>. Сделка повышает его до <b>${RATING_LABELS[nextRating]} (${nextRating})</b> — при неудаче позиция ликвидируется`;
-
-    marginBtn.disabled = false;
-    renderPortfolio();
-}
-
-function resetMarginSelection() {
-    state.marginIndex = null;
-    const slotIn = document.getElementById('slot-input');
-    const slotOut = document.getElementById('slot-output');
-    slotIn.className = 'margin-slot';
-    slotIn.textContent = '❓';
-    slotOut.className = 'margin-slot';
-    slotOut.textContent = '❓';
-
-    document.getElementById('price-input-label').textContent = 'Текущая оценка: $0';
-    document.getElementById('price-output-label').textContent = 'При исполнении: $0';
-    document.getElementById('marginChance').textContent = 'Вероятность исполнения: 0%';
-    document.getElementById('ratingCaption').textContent = 'Выберите позицию в портфеле ниже, чтобы открыть маржинальную сделку';
-    document.getElementById('marginButton').disabled = true;
-    document.querySelectorAll('.rating-step').forEach(s => s.className = 'rating-step');
-}
-
-function executeMarginTrade() {
-    try {
-        if (state.marginIndex === null) return;
-        const position = state.portfolio[state.marginIndex];
-        const currentIdx = RATING_ORDER.indexOf(position.rating);
-        const nextRating = RATING_ORDER[currentIdx + 1];
-        if (!nextRating) return;
-
-        const chance = MARGIN_SUCCESS_CHANCE[position.rating] || 50;
-        const roll = Math.random() * 100;
-
-        if (roll <= chance) {
-            state.portfolio[state.marginIndex].rating = nextRating;
-            showNotice(`Сделка исполнена. Новый рейтинг: ${nextRating} (${RATING_LABELS[nextRating]})`, true);
-        } else {
-            state.portfolio.splice(state.marginIndex, 1);
-            showNotice('Маржин-колл: позиция принудительно ликвидирована', false);
-        }
-
-        resetMarginSelection();
-        renderPortfolio();
-    } catch (err) {
-        console.error('Ошибка исполнения маржинальной сделки:', err);
-        showNotice('Ошибка исполнения ордера', false);
-    }
-}
-
-/* =========================================================
-   ЭКСТРЕННАЯ ДОКАПИТАЛИЗАЦИЯ
-   ========================================================= */
 
 function executeRecapitalization() {
     try {
         if (state.balance > 0) return;
         adjustBalance(100);
-        resetMarginSelection();
-        renderPortfolio();
         showNotice('Экстренная докапитализация счёта: +$100', true);
     } catch (err) {
         console.error('Ошибка докапитализации счёта:', err);
     }
 }
-
-/* =========================================================
-   УВЕДОМЛЕНИЯ
-   ========================================================= */
 
 let noticeTimer = null;
 
@@ -1143,10 +1039,6 @@ function showNotice(message, isPositive) {
 function hideNotice() {
     document.getElementById('noticeBox').style.display = 'none';
 }
-
-/* =========================================================
-   ЗАПУСК
-   ========================================================= */
 
 document.addEventListener('DOMContentLoaded', init);
 </script>
