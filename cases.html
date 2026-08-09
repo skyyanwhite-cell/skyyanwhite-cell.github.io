@@ -190,14 +190,6 @@
         cursor: pointer;
     }
     .quick-chip:active{ border-color: var(--gold); color: var(--gold-bright); }
-    .payout-info{
-        margin-top: 10px;
-        text-align: center;
-        font-size: 12.5px;
-        color: var(--text-dim);
-        min-height: 16px;
-    }
-    .payout-info b{ color: var(--gold-bright); font-family: var(--mono); }
 
     .chart-box{
         background: var(--surface);
@@ -232,6 +224,40 @@
         color: var(--text-dim); margin-bottom: 6px; text-align: center;
     }
     #marketCanvas{ width: 100%; height: 180px; display: block; }
+
+    /* ---- Большое табло P&L во время полноэкранной сделки ---- */
+    .trade-pnl-panel{
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        padding: 6px 0 2px;
+        flex-shrink: 0;
+    }
+    .chart-box.fullscreen .trade-pnl-panel{ display: flex; }
+    .trade-pnl-percent{
+        font-family: var(--mono); font-size: 15px; font-weight: 700;
+        letter-spacing: 0.3px; color: var(--text-dim);
+    }
+    .trade-pnl-percent.positive{ color: var(--green); }
+    .trade-pnl-percent.negative{ color: var(--red); }
+    .trade-pnl-amount{
+        font-family: var(--mono);
+        font-size: clamp(28px, 9vw, 44px);
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        color: var(--text);
+        transition: color .15s ease;
+    }
+    .trade-pnl-amount.positive{ color: var(--green); text-shadow: 0 0 18px rgba(31,174,100,0.55); }
+    .trade-pnl-amount.negative{ color: var(--red); text-shadow: 0 0 18px rgba(229,72,77,0.5); }
+    .trade-pnl-amount.pulse{ animation: pnlPulse .32s ease; }
+    @keyframes pnlPulse{
+        0%{ transform: scale(1); }
+        35%{ transform: scale(1.18); }
+        100%{ transform: scale(1); }
+    }
 
     .direction-row{ display: flex; gap: 10px; margin-bottom: 6px; }
     .direction-btn{
@@ -318,12 +344,15 @@
                 <div class="quick-chip" data-amount="50">$50</div>
                 <div class="quick-chip" data-amount="100">$100</div>
             </div>
-            <div class="payout-info" id="payoutInfo"></div>
         </div>
 
         <div class="chart-box" id="chartBox">
             <div class="chart-label">Рыночная лента · цена и объём</div>
             <canvas id="marketCanvas"></canvas>
+            <div class="trade-pnl-panel" id="tradePnlPanel">
+                <div class="trade-pnl-percent" id="tradePnlPercent">+0%</div>
+                <div class="trade-pnl-amount" id="tradePnlAmount">+$0</div>
+            </div>
         </div>
 
         <div class="direction-row">
@@ -402,19 +431,23 @@ const BASE_URL = 'https://shrimp-tactful-tricycle.ngrok-free.dev';
 const SYNC_INTERVAL_MS = 8000;
 const SYNC_DEBOUNCE_MS = 1200;
 
-// Сделка теперь разворачивается на НЕСКОЛЬКИХ свечах (не одной), дольше по
-// времени и с "зумом" в точку входа — так движение читается визуально.
-const TRADE_MIN_MS = 6000;                 // нижняя граница длительности сделки
-const TRADE_MAX_MS = 9000;                 // верхняя граница длительности сделки
-const TRADE_CANDLES = 5;                   // сколько новых свечей формируется за сделку
+// Сделка разворачивается на нескольких свечах, дольше по времени, с "зумом"
+// в точку входа — так движение читается визуально.
+const TRADE_MIN_MS = 9000;                 // нижняя граница длительности сделки (увеличено)
+const TRADE_MAX_MS = 14000;                // верхняя граница длительности сделки (увеличено)
+const TRADE_CANDLES = 7;                   // сколько новых свечей формируется за сделку
 const TRADE_GROW_END = 0.86;               // доля времени на "дорисовку" пути, дальше — угасание результата
 
 // Параметры пропорциональной модели выигрыша/проигрыша:
-// чем дальше цена ушла в нужную сторону — тем больше прибыль (до потолка),
-// чем дальше ушла против — тем больше теряется от ставки (до полной суммы).
-const MOVE_SCALE_PERCENT = 2.2;            // % движения цены, дающие 100% результата (полная выплата/полная потеря)
-const MAX_PAYOUT_PERCENT = 92;             // потолок доходности при максимально благоприятном движении
+// чем дальше цена ушла в нужную сторону — тем больше прибыль (потолок +400%),
+// чем дальше ушла против — тем больше теряется от ставки (потолок -100%,
+// т.е. нельзя потерять больше вложенной суммы).
+const MOVE_SCALE_PERCENT = 2.2;            // % движения цены, дающие "единицу" масштаба
+const MAX_WIN_MULTIPLE = 4.0;              // потолок прибыли: x4 от ставки (+400%)
 const MIN_LOSS_FRACTION = 0.08;            // даже минимальное движение против — небольшая гарантированная потеря
+
+// Летящие цифры и табло итога
+const FLIGHT_MS = 700;                     // время полёта всплывающей цифры к большому табло
 
 const state = {
     tg: null,
@@ -475,6 +508,39 @@ function playClickSound() {
         osc.stop(now + 0.09);
     } catch (err) {
         console.error('Ошибка воспроизведения звука клика:', err);
+    }
+}
+
+// Звук "поглощения" летящей цифры большим табло — разный для +/-, короткий
+// и не навязчивый, поскольку может звучать до нескольких раз за сделку.
+function playMergeSound(positive) {
+    try {
+        const ctx = ensureAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = positive ? 'triangle' : 'sine';
+
+        if (positive) {
+            osc.frequency.setValueAtTime(520, now);
+            osc.frequency.exponentialRampToValueAtTime(940, now + 0.09);
+        } else {
+            osc.frequency.setValueAtTime(340, now);
+            osc.frequency.exponentialRampToValueAtTime(180, now + 0.14);
+        }
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + (positive ? 0.16 : 0.2));
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + (positive ? 0.18 : 0.22));
+    } catch (err) {
+        console.error('Ошибка звука обновления суммы:', err);
     }
 }
 
@@ -818,20 +884,14 @@ function indexToSlotRightEdge(index, geo) {
 //    перемещается к центру экрана по мере роста масштаба (без рывка в момент
 //    старта — на scale=1 позиция ещё совпадает с обычной, нетронутой лентой).
 // 2) SLIDE — масштаб держится на максимуме, а камера едет вслед за
-//    последней дорисовывающейся свечой, удерживая её в центре экрана. Старые
-//    свечи уезжают влево за край и могут закончиться раньше края холста —
-//    пустое место слева допустимо, как на настоящем графике.
+//    последней дорисовывающейся свечой, удерживая её в центре экрана.
 // 3) ZOOM-OUT — после раскрытия результата масштаб и сдвиг камеры плавно
-//    возвращаются к 1 и 0, то есть ровно к обычному, нетрансформированному
-//    виду ленты, к которому лента и возвращается после закрытия сделки.
+//    возвращаются к 1 и 0, то есть ровно к обычному виду ленты.
 const ZOOM_IN_END = 0.14;
-const MAX_ZOOM = 1.8;              // потолок приближения — ближе, чем раньше, но не так вплотную
-const ZOOM_FLOOR = 1.0;            // не отдаляемся дальше обычного вида ленты
-const ZOOM_SAFE_FRACTION = 0.5;    // какую долю видимой высоты может занимать размах пути сделки — остальное запас по краям
+const MAX_ZOOM = 1.8;
+const ZOOM_FLOOR = 1.0;
+const ZOOM_SAFE_FRACTION = 0.5;
 
-// Непрерывная (дробная) позиция "текущей отрисовываемой точки" сделки —
-// плавно скользит от индекса точки входа к индексу последней свечи сделки
-// по мере прогресса анимации.
 function getLeadIndex(trade) {
     const growT = clamp01((trade.animProgress || 0) / TRADE_GROW_END);
     const leadFraction = growT * trade.pathCandles.length;
@@ -853,9 +913,6 @@ function getChartCameraTransform(geo) {
     const peakZoom = trade.zoomTarget || MAX_ZOOM;
 
     if (p < ZOOM_OUT_START) {
-        // Единая формула покрывает и приближение, и слежение: ramp разгоняет
-        // смещение к центру за время ZOOM_IN_END, а дальше (ramp=1) камера
-        // просто держит leadX/focusY по центру экрана на максимальном зуме.
         const ramp = p <= ZOOM_IN_END ? easeOutCubic(clamp01(p / ZOOM_IN_END)) : 1;
         const scale = p <= ZOOM_IN_END
             ? 1 + (peakZoom - 1) * ramp
@@ -866,9 +923,6 @@ function getChartCameraTransform(geo) {
         return { scale, panX, panY };
     }
 
-    // ZOOM-OUT: плавно едем от последнего состояния слежения к чистой
-    // идентичности (scale=1, pan=0), чтобы после сделки лента выглядела так
-    // же, как до неё, без скачка.
     const u = easeInCubic(clamp01((p - ZOOM_OUT_START) / (1 - ZOOM_OUT_START)));
     const scaleAtHold = peakZoom;
     const panXAtHold = leadX * (1 - scaleAtHold) + (centerX - leadX) * 1;
@@ -951,14 +1005,10 @@ function drawMarketChart() {
 
     ctx.restore();
 
-    // Текст (всплывающие цифры и итог сделки) рисуем ПОСЛЕ снятия трансформации
-    // камеры — в обычных экранных координатах — чтобы при сильном зуме/панораме
-    // цифры не уезжали за верхний или нижний край холста, а текст оставался
-    // чётким, не смазанным масштабированием canvas.
-    drawTickPopups(ctx, geo, cam);
-    if (trade && trade.revealed) {
-        drawTradeResultText(ctx, geo, trade, cam);
-    }
+    // Летящие цифры рисуем ПОСЛЕ снятия трансформации камеры — в обычных
+    // экранных координатах, чтобы полёт к табло не искажался масштабом/паном
+    // и текст оставался чётким.
+    drawFlyingPopups(ctx);
 }
 
 // Переводит точку данных (x,y в координатах ленты) в экранные пиксели с
@@ -967,7 +1017,7 @@ function projectToScreen(x, y, cam) {
     return { x: cam.panX + cam.scale * x, y: cam.panY + cam.scale * y };
 }
 
-// Не даёт тексту уехать за верх/низ видимой области холста.
+// Не даёт точке уехать за верх/низ видимой области холста.
 function clampScreenY(y, cssHeight) {
     const margin = 14;
     return Math.max(margin, Math.min(cssHeight - margin, y));
@@ -1091,70 +1141,37 @@ function drawTradeLines(ctx, geo) {
     ctx.shadowBlur = 0;
 }
 
-// Всплывающий текст финального результата ("+$185" / "-$50"), в экранных
-// координатах — не искажается зумом и не уезжает за край холста.
-function drawTradeResultText(ctx, geo, trade, cam) {
-    const revealT = clamp01((trade.animProgress - TRADE_GROW_END) / (1 - TRADE_GROW_END));
-    const xEndData = indexToX(trade.expiryIndex, geo);
-    const yEntryData = priceToY(trade.entryPrice, geo);
-
-    const riseDistance = 48;
-    const basePoint = projectToScreen(xEndData, yEntryData - 18, cam);
-    let y = basePoint.y - revealT * riseDistance;
-    y = clampScreenY(y, geo.cssHeight);
-    const x = basePoint.x;
-
-    let alpha;
-    if (revealT < 0.16) alpha = revealT / 0.16;
-    else alpha = Math.max(0, 1 - (revealT - 0.16) / 0.84);
-
-    const scale = 0.7 + Math.min(revealT / 0.16, 1) * 0.3;
-    const isWin = trade.result === 'win';
-    const text = formatSignedMoney(trade.netChange);
-
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, alpha);
-    ctx.translate(x, y);
-    ctx.scale(scale, scale);
-    ctx.font = `700 15px ${CHART_MONO_FONT}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isWin ? getCssVar('--green') : getCssVar('--red');
-    if (isWin) {
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = 'rgba(31, 174, 100, 0.85)';
-    }
-    ctx.fillText(text, 0, 0);
-    ctx.restore();
-
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
-}
-
-// Всплывающие цифры на КАЖДОМ тике, в экранных координатах — показывают
-// текущую оценку прибыли/убытка по мере движения цены, ещё до раскрытия.
-function drawTickPopups(ctx, geo, cam) {
+// Летящие цифры: рождаются у точки на графике, где произошёл очередной тик,
+// и летят (с ускорением) к большому табло внизу экрана. В момент "прилёта"
+// они поглощаются табло — табло обновляется, пульсирует и звучит.
+function drawFlyingPopups(ctx) {
     const trade = state.activeTrade;
-    if (!trade || !trade.tickPopups) return;
+    if (!trade || !trade.flyingPopups) return;
 
-    trade.tickPopups.forEach(popup => {
-        const age = performance.now() - popup.bornAt;
-        const life = 900; // мс, время жизни всплывающей цифры
-        const t = clamp01(age / life);
-        if (t >= 1) return;
+    const now = performance.now();
 
-        const alpha = 1 - t;
-        const riseY = -22 * t;
-        const scale = 0.85 + (1 - t) * 0.15;
+    trade.flyingPopups.forEach(popup => {
+        const t = clamp01((now - popup.bornAt) / FLIGHT_MS);
 
-        const screen = projectToScreen(popup.dataX, popup.dataY, cam);
-        const y = clampScreenY(screen.y + riseY, geo.cssHeight);
+        if (t >= 1) {
+            if (!popup.merged) {
+                popup.merged = true;
+                mergePopupIntoTotal(trade, popup.delta);
+            }
+            return;
+        }
+
+        const eased = t * t; // easeIn — разгоняется к цели, как будто её "засасывает"
+        const x = popup.startX + (popup.targetX - popup.startX) * eased;
+        const y = popup.startY + (popup.targetY - popup.startY) * eased;
+        const scale = 1 - 0.6 * t;
+        const alpha = t < 0.75 ? 1 : (1 - (t - 0.75) / 0.25);
 
         ctx.save();
-        ctx.globalAlpha = Math.max(0, alpha) * 0.9;
-        ctx.translate(screen.x, y);
+        ctx.globalAlpha = Math.max(0, alpha);
+        ctx.translate(x, y);
         ctx.scale(scale, scale);
-        ctx.font = `700 11.5px ${CHART_MONO_FONT}`;
+        ctx.font = `700 13px ${CHART_MONO_FONT}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = popup.positive ? getCssVar('--green') : getCssVar('--red');
@@ -1163,8 +1180,41 @@ function drawTickPopups(ctx, geo, cam) {
     });
     ctx.globalAlpha = 1;
 
-    // чистим отжившие свои попапы
-    trade.tickPopups = trade.tickPopups.filter(p => performance.now() - p.bornAt < 900);
+    trade.flyingPopups = trade.flyingPopups.filter(p => !p.merged);
+}
+
+// Добавляет значение поглощённой цифры к большому итогу, пульсирует табло
+// и проигрывает звук — всё это ровно в момент "прилёта" цифры.
+function mergePopupIntoTotal(trade, delta) {
+    trade.displayedTotal = round2(trade.displayedTotal + delta);
+    updatePnlPanel(trade);
+    pulsePnlAmount();
+    playMergeSound(delta >= 0);
+}
+
+function updatePnlPanel(trade) {
+    const amountEl = document.getElementById('tradePnlAmount');
+    const percentEl = document.getElementById('tradePnlPercent');
+    if (!amountEl || !percentEl) return;
+
+    const positive = trade.displayedTotal >= 0;
+    amountEl.textContent = formatSignedMoney(trade.displayedTotal);
+    amountEl.classList.toggle('positive', positive);
+    amountEl.classList.toggle('negative', !positive);
+
+    const pct = trade.amount > 0 ? (trade.displayedTotal / trade.amount) * 100 : 0;
+    const pctSign = pct >= 0 ? '+' : '';
+    percentEl.textContent = `${pctSign}${pct.toFixed(0)}%`;
+    percentEl.classList.toggle('positive', positive);
+    percentEl.classList.toggle('negative', !positive);
+}
+
+function pulsePnlAmount() {
+    const amountEl = document.getElementById('tradePnlAmount');
+    if (!amountEl) return;
+    amountEl.classList.remove('pulse');
+    void amountEl.offsetWidth; // форсируем reflow, чтобы анимация точно перезапустилась
+    amountEl.classList.add('pulse');
 }
 
 function getCssVar(name) {
@@ -1196,8 +1246,8 @@ function updateGrowingPath(trade, totalProgress) {
             candle.l = prevClose + (target.l - prevClose) * eased;
             candle.v = target.v * eased;
 
-            // как только эта свеча только что "дорисовалась" впервые — фиксируем
-            // всплывающую цифру текущего прогресса по сделке
+            // как только эта свеча только что "дорисовалась" впервые — рождаем
+            // летящую цифру приращения к текущему итогу
             if (localT >= 0.999 && !trade.tickFired[i]) {
                 trade.tickFired[i] = true;
                 spawnTickPopup(trade, candleIndex, target.c);
@@ -1211,25 +1261,39 @@ function updateGrowingPath(trade, totalProgress) {
     }
 }
 
+// Рождает летящую цифру-приращение (не полный текущий итог, а именно дельту
+// с прошлого тика) в точке свечи на графике и нацеливает её на большое табло
+// внизу экрана.
 function spawnTickPopup(trade, candleIndex, priceAtTick) {
     const canvas = document.getElementById('marketCanvas');
     if (!canvas) return;
     const cssWidth = canvas.clientWidth || 320;
     const cssHeight = canvas.clientHeight || 180;
     const geo = computeChartGeometry(cssWidth, cssHeight);
+    const cam = getChartCameraTransform(geo);
+
+    const dataX = indexToX(candleIndex, geo);
+    const dataY = priceToY(priceAtTick, geo) - 10;
+    const startScreen = projectToScreen(dataX, dataY, cam);
 
     const favorable = trade.direction === 'up'
         ? (priceAtTick - trade.entryPrice)
         : (trade.entryPrice - priceAtTick);
     const movePercent = (favorable / trade.entryPrice) * 100;
-    const estimate = estimateNetChange(trade.amount, movePercent);
+    const newTotal = estimateNetChange(trade.amount, movePercent);
+    const delta = round2(newTotal - trade.lockedNet);
+    trade.lockedNet = newTotal;
 
-    trade.tickPopups.push({
-        dataX: indexToX(candleIndex, geo),
-        dataY: priceToY(priceAtTick, geo) - 10,
-        text: formatSignedMoney(estimate),
-        positive: estimate >= 0,
-        bornAt: performance.now()
+    trade.flyingPopups.push({
+        startX: startScreen.x,
+        startY: clampScreenY(startScreen.y, cssHeight),
+        targetX: cssWidth / 2,
+        targetY: cssHeight - 8,
+        delta: delta,
+        text: formatSignedMoney(delta),
+        positive: delta >= 0,
+        bornAt: performance.now(),
+        merged: false
     });
 }
 
@@ -1250,7 +1314,12 @@ function runTradeAnimation() {
         updateGrowingPath(trade, totalProgress);
         drawMarketChart();
 
-        if (totalProgress < 1) {
+        // Дожидаемся, пока все летящие цифры долетят и поглотятся, даже если
+        // формальное время анимации уже вышло — иначе табло может "потерять"
+        // последний тик.
+        const stillFlying = trade.flyingPopups.length > 0;
+
+        if (totalProgress < 1 || stillFlying) {
             tradeAnimFrameId = requestAnimationFrame(frame);
         } else {
             tradeAnimFrameId = null;
@@ -1318,18 +1387,20 @@ function round2(value) {
    ТРЕЙДИНГОВАЯ СДЕЛКА ВВЕРХ / ВНИЗ — ПРОПОРЦИОНАЛЬНЫЙ РЕЗУЛЬТАТ
    ========================================================= */
 
-// Чем дальше цена прошла в выбранную сторону — тем больше прибыль (до потолка
-// MAX_PAYOUT_PERCENT). Чем дальше против — тем больше теряется от ставки
-// (от MIN_LOSS_FRACTION до полной суммы). movePercent — движение цены в ПОЛЬЗУ
-// направления сделки (отрицательное значит движение против).
+// Чем дальше цена прошла в выбранную сторону — тем больше прибыль, без
+// верхнего предела кроме потолка в MAX_WIN_MULTIPLE (x4, то есть +400%).
+// Чем дальше против — тем больше теряется от ставки, но не больше 100% —
+// потерять можно максимум ровно то, что вложено, и ни центом больше.
+// movePercent — движение цены В ПОЛЬЗУ направления сделки (отрицательное
+// значит движение против направления ставки).
 function estimateNetChange(amount, movePercent) {
     if (movePercent >= 0) {
-        const fraction = clamp01(movePercent / MOVE_SCALE_PERCENT);
-        return round2(amount * fraction * (MAX_PAYOUT_PERCENT / 100));
+        const multiple = Math.min(movePercent / MOVE_SCALE_PERCENT, MAX_WIN_MULTIPLE);
+        return round2(amount * multiple);
     } else {
         const against = Math.abs(movePercent);
         const fraction = MIN_LOSS_FRACTION + (1 - MIN_LOSS_FRACTION) * clamp01(against / MOVE_SCALE_PERCENT);
-        return round2(-amount * fraction);
+        return round2(-amount * fraction); // fraction максимум 1.0 => максимум -100% от ставки
     }
 }
 
@@ -1415,7 +1486,9 @@ function placeTrade(direction) {
             direction: direction,
             pathCandles: pathCandles,
             tickFired: new Array(TRADE_CANDLES).fill(false),
-            tickPopups: [],
+            flyingPopups: [],
+            lockedNet: 0,
+            displayedTotal: 0,
             won: won,
             netChange: netChange,
             amount: amount,
@@ -1426,6 +1499,8 @@ function placeTrade(direction) {
             durationMs: randomBetween(TRADE_MIN_MS, TRADE_MAX_MS),
             zoomTarget: zoomTarget
         };
+
+        updatePnlPanel(state.activeTrade); // сразу показываем табло с нулём, без задержки
 
         runTradeAnimation();
     } catch (err) {
