@@ -206,6 +206,26 @@
         padding: 10px 8px;
         margin-bottom: 12px;
         overflow: hidden;
+        position: relative;
+        z-index: 1;
+        transition: all .38s cubic-bezier(.22,.9,.3,1);
+    }
+    .chart-box.fullscreen{
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100vw; height: 100vh;
+        max-width: none;
+        margin: 0;
+        border-radius: 0;
+        z-index: 600;
+        display: flex;
+        flex-direction: column;
+        padding: 16px 10px;
+    }
+    .chart-box.fullscreen #marketCanvas{
+        flex: 1 1 auto;
+        height: auto !important;
+        min-height: 0;
     }
     .chart-label{
         font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
@@ -301,7 +321,7 @@
             <div class="payout-info" id="payoutInfo"></div>
         </div>
 
-        <div class="chart-box">
+        <div class="chart-box" id="chartBox">
             <div class="chart-label">Рыночная лента · цена и объём</div>
             <canvas id="marketCanvas"></canvas>
         </div>
@@ -805,7 +825,9 @@ function indexToSlotRightEdge(index, geo) {
 //    возвращаются к 1 и 0, то есть ровно к обычному, нетрансформированному
 //    виду ленты, к которому лента и возвращается после закрытия сделки.
 const ZOOM_IN_END = 0.14;
-const MAX_ZOOM = 2.6;
+const MAX_ZOOM = 1.8;              // потолок приближения — ближе, чем раньше, но не так вплотную
+const ZOOM_FLOOR = 1.0;            // не отдаляемся дальше обычного вида ленты
+const ZOOM_SAFE_FRACTION = 0.5;    // какую долю видимой высоты может занимать размах пути сделки — остальное запас по краям
 
 // Непрерывная (дробная) позиция "текущей отрисовываемой точки" сделки —
 // плавно скользит от индекса точки входа к индексу последней свечи сделки
@@ -828,6 +850,7 @@ function getChartCameraTransform(geo) {
     const leadIndex = getLeadIndex(trade);
     const leadX = leadIndex * geo.slotWidth + geo.slotWidth / 2;
     const focusY = priceToY(trade.entryPrice, geo);
+    const peakZoom = trade.zoomTarget || MAX_ZOOM;
 
     if (p < ZOOM_OUT_START) {
         // Единая формула покрывает и приближение, и слежение: ramp разгоняет
@@ -835,8 +858,8 @@ function getChartCameraTransform(geo) {
         // просто держит leadX/focusY по центру экрана на максимальном зуме.
         const ramp = p <= ZOOM_IN_END ? easeOutCubic(clamp01(p / ZOOM_IN_END)) : 1;
         const scale = p <= ZOOM_IN_END
-            ? 1 + (MAX_ZOOM - 1) * ramp
-            : MAX_ZOOM;
+            ? 1 + (peakZoom - 1) * ramp
+            : peakZoom;
 
         const panX = leadX * (1 - scale) + (centerX - leadX) * ramp;
         const panY = focusY * (1 - scale) + (centerY - focusY) * ramp;
@@ -847,7 +870,7 @@ function getChartCameraTransform(geo) {
     // идентичности (scale=1, pan=0), чтобы после сделки лента выглядела так
     // же, как до неё, без скачка.
     const u = easeInCubic(clamp01((p - ZOOM_OUT_START) / (1 - ZOOM_OUT_START)));
-    const scaleAtHold = MAX_ZOOM;
+    const scaleAtHold = peakZoom;
     const panXAtHold = leadX * (1 - scaleAtHold) + (centerX - leadX) * 1;
     const panYAtHold = focusY * (1 - scaleAtHold) + (centerY - focusY) * 1;
 
@@ -1240,6 +1263,7 @@ function runTradeAnimation() {
 
 function finishTradeAnimation() {
     state.activeTrade = null;
+    document.getElementById('chartBox').classList.remove('fullscreen');
     drawMarketChart();
     state.tradeInProgress = false;
     const amt = getEnteredAmount();
@@ -1309,6 +1333,20 @@ function estimateNetChange(amount, movePercent) {
     }
 }
 
+// Считаем, насколько можно приблизиться, не обрезав путь сделки: чем шире
+// размах цены за время сделки, тем меньше приближение (вплоть до обычного
+// вида ленты), чтобы верх/низ пути всегда оставались с запасом от краёв.
+function computeTradeZoomTarget(entryPrice, pathCandles, geo) {
+    let hi = entryPrice, lo = entryPrice;
+    pathCandles.forEach(c => {
+        if (c.h > hi) hi = c.h;
+        if (c.l < lo) lo = c.l;
+    });
+    const pathRange = Math.max(hi - lo, 0.01);
+    const raw = (ZOOM_SAFE_FRACTION * geo.priceRange) / pathRange;
+    return Math.max(ZOOM_FLOOR, Math.min(MAX_ZOOM, raw));
+}
+
 function bindDirectionButtons() {
     document.getElementById('upButton').addEventListener('click', () => placeTrade('up'));
     document.getElementById('downButton').addEventListener('click', () => placeTrade('down'));
@@ -1353,6 +1391,12 @@ function placeTrade(direction) {
         const netChange = estimateNetChange(amount, movePercent);
         const won = netChange >= 0;
 
+        const canvasEl = document.getElementById('marketCanvas');
+        const preGeo = computeChartGeometry(canvasEl.clientWidth || 320, canvasEl.clientHeight || 180);
+        const zoomTarget = computeTradeZoomTarget(entryPrice, pathCandles, preGeo);
+
+        document.getElementById('chartBox').classList.add('fullscreen');
+
         adjustBalance(-amount); // ставка списывается сразу при входе в сделку
 
         for (let i = 0; i < TRADE_CANDLES; i++) {
@@ -1379,7 +1423,8 @@ function placeTrade(direction) {
             result: null,
             animProgress: 0,
             animStartTime: performance.now(),
-            durationMs: randomBetween(TRADE_MIN_MS, TRADE_MAX_MS)
+            durationMs: randomBetween(TRADE_MIN_MS, TRADE_MAX_MS),
+            zoomTarget: zoomTarget
         };
 
         runTradeAnimation();
