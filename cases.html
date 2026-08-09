@@ -205,6 +205,7 @@
         border-radius: 12px;
         padding: 10px 8px;
         margin-bottom: 12px;
+        overflow: hidden;
     }
     .chart-label{
         font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
@@ -223,11 +224,13 @@
         cursor: pointer;
         letter-spacing: 0.2px;
         display: flex; flex-direction: column; align-items: center; gap: 4px;
+        transition: transform .1s ease;
     }
+    .direction-btn:active{ transform: scale(0.97); }
     .direction-btn .dir-arrow{ font-size: 20px; }
     .direction-btn.up{ background: linear-gradient(135deg, #2BD881, var(--green)); color: #06180F; }
     .direction-btn.down{ background: linear-gradient(135deg, #F26065, var(--red)); color: #1A0607; }
-    .direction-btn:disabled{ opacity: 0.4; cursor: not-allowed; }
+    .direction-btn:disabled{ opacity: 0.4; cursor: not-allowed; transform: none; }
 
     .history-page .history-list{ display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
     .history-item{
@@ -253,23 +256,6 @@
     .notice.win{ color: var(--green); background: rgba(31,174,100,0.08); }
     .notice.lose{ color: var(--red); background: rgba(229,72,77,0.08); }
     .notice.info{ color: var(--gold-bright); background: rgba(201,169,97,0.08); }
-
-    .order-overlay{
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(4,5,8,0.9); display: none; flex-direction: column;
-        justify-content: center; align-items: center; z-index: 1000; gap: 14px;
-    }
-    .order-label{ font-size: 12px; color: var(--text-dim); font-family: var(--mono); letter-spacing: 0.5px; }
-    .order-spinner{
-        width: 46px; height: 46px; border-radius: 50%;
-        border: 3px solid var(--surface-2);
-        border-top-color: var(--gold);
-        animation: spin 0.9s linear infinite;
-    }
-    @keyframes spin{ to{ transform: rotate(360deg); } }
-    .order-countdown{
-        font-family: var(--mono); font-size: 26px; font-weight: 700; color: var(--gold-bright);
-    }
 
 </style>
 </head>
@@ -338,11 +324,6 @@
         <div class="history-list" id="historyList"></div>
     </div>
 
-    <div class="order-overlay" id="orderOverlay">
-        <div class="order-label">ОЖИДАНИЕ ЗАКРЫТИЯ СВЕЧИ...</div>
-        <div class="order-spinner"></div>
-        <div class="order-countdown" id="orderCountdown">3</div>
-    </div>
 </div>
 
 <script>
@@ -401,15 +382,37 @@ const BASE_URL = 'https://shrimp-tactful-tricycle.ngrok-free.dev';
 const SYNC_INTERVAL_MS = 8000;
 const SYNC_DEBOUNCE_MS = 1200;
 
+// Сделка теперь разворачивается на НЕСКОЛЬКИХ свечах (не одной), дольше по
+// времени и с "зумом" в точку входа — так движение читается визуально.
+const TRADE_MIN_MS = 6000;                 // нижняя граница длительности сделки
+const TRADE_MAX_MS = 9000;                 // верхняя граница длительности сделки
+const TRADE_CANDLES = 5;                   // сколько новых свечей формируется за сделку
+const TRADE_GROW_END = 0.86;               // доля времени на "дорисовку" пути, дальше — угасание результата
+
+// Параметры пропорциональной модели выигрыша/проигрыша:
+// чем дальше цена ушла в нужную сторону — тем больше прибыль (до потолка),
+// чем дальше ушла против — тем больше теряется от ставки (до полной суммы).
+const MOVE_SCALE_PERCENT = 2.2;            // % движения цены, дающие 100% результата (полная выплата/полная потеря)
+const MAX_PAYOUT_PERCENT = 92;             // потолок доходности при максимально благоприятном движении
+const MIN_LOSS_FRACTION = 0.08;            // даже минимальное движение против — небольшая гарантированная потеря
+
 const state = {
     tg: null,
     userId: null,
     profileLoaded: false,
     history: [],
     balance: 1000,
-    currentPayoutPercent: null,
-    tradeInProgress: false
+    tradeInProgress: false,
+    // Активная сделка + её разметка/анимация на графике. null, если сделки нет.
+    activeTrade: null
 };
+
+let tradeAnimFrameId = null;
+const CHART_MONO_FONT = "'SF Mono', 'Roboto Mono', Consolas, monospace";
+
+function clamp01(value) {
+    return Math.max(0, Math.min(1, value));
+}
 
 let audioCtx = null;
 
@@ -686,16 +689,13 @@ function handleAmountChange() {
     const amount = getEnteredAmount();
     const upBtn = document.getElementById('upButton');
     const downBtn = document.getElementById('downButton');
-    const payoutInfo = document.getElementById('payoutInfo');
 
     if (amount > 0) {
-        state.currentPayoutPercent = Math.floor(randomBetween(80, 90));
-        payoutInfo.innerHTML = `Текущая доходность сделки: <b>${state.currentPayoutPercent}%</b>`;
-        upBtn.disabled = false;
-        downBtn.disabled = false;
+        if (!state.tradeInProgress) {
+            upBtn.disabled = false;
+            downBtn.disabled = false;
+        }
     } else {
-        state.currentPayoutPercent = null;
-        payoutInfo.textContent = '';
         upBtn.disabled = true;
         downBtn.disabled = true;
     }
@@ -706,6 +706,10 @@ function getEnteredAmount() {
     if (isNaN(raw) || raw <= 0) return 0;
     return round2(raw);
 }
+
+/* =========================================================
+   РЫНОЧНЫЙ ГРАФИК: СВЕЧИ + ОБЪЁМ + РАЗМЕТКА СДЕЛКИ + ЗУМ
+   ========================================================= */
 
 let marketCandles = [];
 let marketChartTimer = null;
@@ -741,7 +745,7 @@ function buildNextCandle(openPrice) {
 }
 
 function tickMarketChart() {
-    if (state.tradeInProgress) return;
+    if (state.tradeInProgress) return; // не двигаем ленту во время открытой сделки
     const last = marketCandles[marketCandles.length - 1];
     const next = buildNextCandle(last.c);
     marketCandles.push(next);
@@ -749,19 +753,10 @@ function tickMarketChart() {
     drawMarketChart();
 }
 
-function drawMarketChart() {
-    const canvas = document.getElementById('marketCanvas');
-    if (!canvas || marketCandles.length === 0) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    const cssWidth = canvas.clientWidth || 320;
-    const cssHeight = canvas.clientHeight || 180;
-    canvas.width = cssWidth * dpr;
-    canvas.height = cssHeight * dpr;
-    const ctx = canvas.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, cssWidth, cssHeight);
-
+// Собирает геометрию графика в одном месте — разметка сделки считается
+// по тем же координатам, что и свечи, поэтому при ресайзе/скролле всё
+// остаётся синхронно.
+function computeChartGeometry(cssWidth, cssHeight) {
     const priceAreaH = cssHeight * 0.68;
     const volumeAreaTop = cssHeight * 0.72;
     const volumeAreaH = cssHeight * 0.28;
@@ -778,15 +773,138 @@ function drawMarketChart() {
     const slotWidth = cssWidth / n;
     const bodyWidth = Math.max(2, slotWidth * 0.55);
 
+    return {
+        cssWidth, cssHeight,
+        priceAreaH, volumeAreaTop, volumeAreaH,
+        minPrice, maxPrice, priceRange, maxVolume,
+        n, slotWidth, bodyWidth
+    };
+}
+
+function priceToY(price, geo) {
+    return geo.priceAreaH - ((price - geo.minPrice) / geo.priceRange) * geo.priceAreaH;
+}
+
+function indexToX(index, geo) {
+    return index * geo.slotWidth + geo.slotWidth / 2;
+}
+
+function indexToSlotRightEdge(index, geo) {
+    return (index + 1) * geo.slotWidth;
+}
+
+// Камера сделки в три фазы:
+// 1) ZOOM-IN — приближаем именно точку открытия сделки, она плавно
+//    перемещается к центру экрана по мере роста масштаба (без рывка в момент
+//    старта — на scale=1 позиция ещё совпадает с обычной, нетронутой лентой).
+// 2) SLIDE — масштаб держится на максимуме, а камера едет вслед за
+//    последней дорисовывающейся свечой, удерживая её в центре экрана. Старые
+//    свечи уезжают влево за край и могут закончиться раньше края холста —
+//    пустое место слева допустимо, как на настоящем графике.
+// 3) ZOOM-OUT — после раскрытия результата масштаб и сдвиг камеры плавно
+//    возвращаются к 1 и 0, то есть ровно к обычному, нетрансформированному
+//    виду ленты, к которому лента и возвращается после закрытия сделки.
+const ZOOM_IN_END = 0.14;
+const MAX_ZOOM = 2.6;
+
+// Непрерывная (дробная) позиция "текущей отрисовываемой точки" сделки —
+// плавно скользит от индекса точки входа к индексу последней свечи сделки
+// по мере прогресса анимации.
+function getLeadIndex(trade) {
+    const growT = clamp01((trade.animProgress || 0) / TRADE_GROW_END);
+    const leadFraction = growT * trade.pathCandles.length;
+    return trade.entryIndex + leadFraction;
+}
+
+function getChartCameraTransform(geo) {
+    const trade = state.activeTrade;
+    const centerX = geo.cssWidth / 2;
+    const centerY = geo.priceAreaH / 2;
+    if (!trade) return { scale: 1, panX: 0, panY: 0 };
+
+    const p = trade.animProgress || 0;
+    const ZOOM_OUT_START = TRADE_GROW_END;
+
+    const leadIndex = getLeadIndex(trade);
+    const leadX = leadIndex * geo.slotWidth + geo.slotWidth / 2;
+    const focusY = priceToY(trade.entryPrice, geo);
+
+    if (p < ZOOM_OUT_START) {
+        // Единая формула покрывает и приближение, и слежение: ramp разгоняет
+        // смещение к центру за время ZOOM_IN_END, а дальше (ramp=1) камера
+        // просто держит leadX/focusY по центру экрана на максимальном зуме.
+        const ramp = p <= ZOOM_IN_END ? easeOutCubic(clamp01(p / ZOOM_IN_END)) : 1;
+        const scale = p <= ZOOM_IN_END
+            ? 1 + (MAX_ZOOM - 1) * ramp
+            : MAX_ZOOM;
+
+        const panX = leadX * (1 - scale) + (centerX - leadX) * ramp;
+        const panY = focusY * (1 - scale) + (centerY - focusY) * ramp;
+        return { scale, panX, panY };
+    }
+
+    // ZOOM-OUT: плавно едем от последнего состояния слежения к чистой
+    // идентичности (scale=1, pan=0), чтобы после сделки лента выглядела так
+    // же, как до неё, без скачка.
+    const u = easeInCubic(clamp01((p - ZOOM_OUT_START) / (1 - ZOOM_OUT_START)));
+    const scaleAtHold = MAX_ZOOM;
+    const panXAtHold = leadX * (1 - scaleAtHold) + (centerX - leadX) * 1;
+    const panYAtHold = focusY * (1 - scaleAtHold) + (centerY - focusY) * 1;
+
+    const scale = lerpNum(scaleAtHold, 1, u);
+    const panX = lerpNum(panXAtHold, 0, u);
+    const panY = lerpNum(panYAtHold, 0, u);
+    return { scale, panX, panY };
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeInCubic(t) { return t * t * t; }
+function lerpNum(a, b, t) { return a + (b - a) * t; }
+
+function drawMarketChart() {
+    const canvas = document.getElementById('marketCanvas');
+    if (!canvas || marketCandles.length === 0) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.clientWidth || 320;
+    const cssHeight = canvas.clientHeight || 180;
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+    const geo = computeChartGeometry(cssWidth, cssHeight);
+    const cam = getChartCameraTransform(geo);
+
+    ctx.save();
+    if (cam.scale !== 1 || cam.panX !== 0 || cam.panY !== 0) {
+        ctx.translate(cam.panX, cam.panY);
+        ctx.scale(cam.scale, cam.scale);
+    }
+
+    drawTradeZoneFill(ctx, geo);
+
+    const trade = state.activeTrade;
+    const growTNow = trade ? clamp01((trade.animProgress || 0) / TRADE_GROW_END) : 0;
+
     marketCandles.forEach((candle, i) => {
-        const x = i * slotWidth + slotWidth / 2;
+        // Свечи сделки, чья очередь ещё не наступила, не рисуем вообще —
+        // иначе их плоское "нулевое" тело выдаёт будущую позицию заранее.
+        if (trade && i > trade.entryIndex && i <= trade.expiryIndex) {
+            const offset = i - trade.entryIndex - 1;
+            const segStart = offset / trade.pathCandles.length;
+            if (growTNow <= segStart) return;
+        }
+
+        const x = indexToX(i, geo);
         const up = candle.c >= candle.o;
         const color = up ? getCssVar('--green') : getCssVar('--red');
 
-        const yHigh = priceAreaH - ((candle.h - minPrice) / priceRange) * priceAreaH;
-        const yLow = priceAreaH - ((candle.l - minPrice) / priceRange) * priceAreaH;
-        const yOpen = priceAreaH - ((candle.o - minPrice) / priceRange) * priceAreaH;
-        const yClose = priceAreaH - ((candle.c - minPrice) / priceRange) * priceAreaH;
+        const yHigh = priceToY(candle.h, geo);
+        const yLow = priceToY(candle.l, geo);
+        const yOpen = priceToY(candle.o, geo);
+        const yClose = priceToY(candle.c, geo);
 
         ctx.strokeStyle = color;
         ctx.lineWidth = 1;
@@ -798,17 +916,335 @@ function drawMarketChart() {
         const bodyTop = Math.min(yOpen, yClose);
         const bodyHeight = Math.max(1.5, Math.abs(yClose - yOpen));
         ctx.fillStyle = color;
-        ctx.fillRect(x - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
+        ctx.fillRect(x - geo.bodyWidth / 2, bodyTop, geo.bodyWidth, bodyHeight);
 
-        const volHeight = (candle.v / maxVolume) * volumeAreaH;
+        const volHeight = (candle.v / geo.maxVolume) * geo.volumeAreaH;
         ctx.globalAlpha = 0.55;
-        ctx.fillRect(x - bodyWidth / 2, volumeAreaTop + (volumeAreaH - volHeight), bodyWidth, volHeight);
+        ctx.fillRect(x - geo.bodyWidth / 2, geo.volumeAreaTop + (geo.volumeAreaH - volHeight), geo.bodyWidth, volHeight);
         ctx.globalAlpha = 1;
     });
+
+    drawTradeLines(ctx, geo);
+
+    ctx.restore();
+
+    // Текст (всплывающие цифры и итог сделки) рисуем ПОСЛЕ снятия трансформации
+    // камеры — в обычных экранных координатах — чтобы при сильном зуме/панораме
+    // цифры не уезжали за верхний или нижний край холста, а текст оставался
+    // чётким, не смазанным масштабированием canvas.
+    drawTickPopups(ctx, geo, cam);
+    if (trade && trade.revealed) {
+        drawTradeResultText(ctx, geo, trade, cam);
+    }
+}
+
+// Переводит точку данных (x,y в координатах ленты) в экранные пиксели с
+// учётом текущего состояния камеры (панорама + масштаб).
+function projectToScreen(x, y, cam) {
+    return { x: cam.panX + cam.scale * x, y: cam.panY + cam.scale * y };
+}
+
+// Не даёт тексту уехать за верх/низ видимой области холста.
+function clampScreenY(y, cssHeight) {
+    const margin = 14;
+    return Math.max(margin, Math.min(cssHeight - margin, y));
+}
+
+/* ---- Разметка активной сделки ---- */
+
+// Пока сделка не раскрыта (revealed === false) — зона окрашена нейтрально
+// (золотистое "дыхание"), чтобы не выдавать исход заранее. После раскрытия
+// плавно перетекает в зелёное/красное свечение и угасает — без резких скачков.
+function drawTradeZoneFill(ctx, geo) {
+    const trade = state.activeTrade;
+    if (!trade) return;
+
+    const xStart = indexToX(trade.entryIndex, geo);
+    const xEnd = indexToSlotRightEdge(trade.expiryIndex, geo);
+    const yEntry = priceToY(trade.entryPrice, geo);
+    const zoneX = Math.min(xStart, xEnd);
+    const zoneWidth = Math.abs(xEnd - xStart);
+
+    const entrance = clamp01(((trade.animProgress || 0) - ZOOM_IN_END) / 0.06);
+
+    ctx.save();
+
+    if (!trade.revealed) {
+        const breathe = Math.sin(performance.now() / 260) * 0.5 + 0.5;
+        const alpha = (0.07 + breathe * 0.05) * entrance;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = 'rgb(201, 169, 97)';
+        if (trade.direction === 'up') ctx.fillRect(zoneX, 0, zoneWidth, yEntry);
+        else ctx.fillRect(zoneX, yEntry, zoneWidth, geo.priceAreaH - yEntry);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+        return;
+    }
+
+    const revealT = clamp01((trade.animProgress - TRADE_GROW_END) / (1 - TRADE_GROW_END));
+    const rgb = trade.result === 'win' ? '0, 255, 0' : '255, 0, 0';
+    let alpha;
+
+    if (trade.result === 'win') {
+        ctx.shadowBlur = 24;
+        ctx.shadowColor = `rgba(${rgb}, 0.9)`;
+        const pulse = Math.sin(performance.now() / 170) * 0.5 + 0.5;
+        const burstIn = Math.sin(Math.min(revealT / 0.22, 1) * (Math.PI / 2));
+        const fadeOut = 1 - clamp01((revealT - 0.62) / 0.38);
+        alpha = (0.16 + pulse * 0.22) * burstIn * fadeOut;
+    } else {
+        alpha = 0.14 * (1 - clamp01(revealT / 0.65));
+    }
+
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.fillStyle = `rgb(${rgb})`;
+    if (trade.direction === 'up') ctx.fillRect(zoneX, 0, zoneWidth, yEntry);
+    else ctx.fillRect(zoneX, yEntry, zoneWidth, geo.priceAreaH - yEntry);
+
+    ctx.restore();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+}
+
+// Вертикальные линии старта/финиша + горизонтальная линия входа.
+function drawTradeLines(ctx, geo) {
+    const trade = state.activeTrade;
+    if (!trade) return;
+
+    const xStart = indexToX(trade.entryIndex, geo);
+    const xEnd = indexToX(trade.expiryIndex, geo);
+    const xZoneRightEdge = indexToSlotRightEdge(trade.expiryIndex, geo);
+    const yEntry = priceToY(trade.entryPrice, geo);
+
+    const entrance = clamp01(((trade.animProgress || 0) - ZOOM_IN_END) / 0.06);
+    let lineAlpha = entrance;
+    let glowFinish = false;
+    const glowRgb = trade.result === 'win' ? '0, 255, 0' : '255, 0, 0';
+
+    if (trade.revealed) {
+        const revealT = clamp01((trade.animProgress - TRADE_GROW_END) / (1 - TRADE_GROW_END));
+        if (trade.result === 'win') {
+            glowFinish = true;
+            lineAlpha = 1 - clamp01((revealT - 0.55) / 0.45);
+        } else {
+            lineAlpha = 1 - clamp01(revealT / 0.6);
+        }
+    }
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, lineAlpha);
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = getCssVar('--gold-bright');
+
+    ctx.beginPath();
+    ctx.moveTo(xStart, 0);
+    ctx.lineTo(xStart, geo.priceAreaH);
+    ctx.stroke();
+
+    if (glowFinish) {
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = `rgba(${glowRgb}, 0.9)`;
+    }
+    ctx.beginPath();
+    ctx.moveTo(xEnd, 0);
+    ctx.lineTo(xEnd, geo.priceAreaH);
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    ctx.globalAlpha = 1;
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, lineAlpha);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = getCssVar('--gold-bright');
+    ctx.beginPath();
+    ctx.moveTo(xStart, yEntry);
+    ctx.lineTo(xZoneRightEdge, yEntry);
+    ctx.stroke();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+}
+
+// Всплывающий текст финального результата ("+$185" / "-$50"), в экранных
+// координатах — не искажается зумом и не уезжает за край холста.
+function drawTradeResultText(ctx, geo, trade, cam) {
+    const revealT = clamp01((trade.animProgress - TRADE_GROW_END) / (1 - TRADE_GROW_END));
+    const xEndData = indexToX(trade.expiryIndex, geo);
+    const yEntryData = priceToY(trade.entryPrice, geo);
+
+    const riseDistance = 48;
+    const basePoint = projectToScreen(xEndData, yEntryData - 18, cam);
+    let y = basePoint.y - revealT * riseDistance;
+    y = clampScreenY(y, geo.cssHeight);
+    const x = basePoint.x;
+
+    let alpha;
+    if (revealT < 0.16) alpha = revealT / 0.16;
+    else alpha = Math.max(0, 1 - (revealT - 0.16) / 0.84);
+
+    const scale = 0.7 + Math.min(revealT / 0.16, 1) * 0.3;
+    const isWin = trade.result === 'win';
+    const text = formatSignedMoney(trade.netChange);
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.font = `700 15px ${CHART_MONO_FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = isWin ? getCssVar('--green') : getCssVar('--red');
+    if (isWin) {
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = 'rgba(31, 174, 100, 0.85)';
+    }
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+}
+
+// Всплывающие цифры на КАЖДОМ тике, в экранных координатах — показывают
+// текущую оценку прибыли/убытка по мере движения цены, ещё до раскрытия.
+function drawTickPopups(ctx, geo, cam) {
+    const trade = state.activeTrade;
+    if (!trade || !trade.tickPopups) return;
+
+    trade.tickPopups.forEach(popup => {
+        const age = performance.now() - popup.bornAt;
+        const life = 900; // мс, время жизни всплывающей цифры
+        const t = clamp01(age / life);
+        if (t >= 1) return;
+
+        const alpha = 1 - t;
+        const riseY = -22 * t;
+        const scale = 0.85 + (1 - t) * 0.15;
+
+        const screen = projectToScreen(popup.dataX, popup.dataY, cam);
+        const y = clampScreenY(screen.y + riseY, geo.cssHeight);
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, alpha) * 0.9;
+        ctx.translate(screen.x, y);
+        ctx.scale(scale, scale);
+        ctx.font = `700 11.5px ${CHART_MONO_FONT}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = popup.positive ? getCssVar('--green') : getCssVar('--red');
+        ctx.fillText(popup.text, 0, 0);
+        ctx.restore();
+    });
+    ctx.globalAlpha = 1;
+
+    // чистим отжившие свои попапы
+    trade.tickPopups = trade.tickPopups.filter(p => performance.now() - p.bornAt < 900);
 }
 
 function getCssVar(name) {
     return getComputedStyle(document.body).getPropertyValue(name).trim() || '#888';
+}
+
+/* ---- Цикл анимации сделки (единый requestAnimationFrame, без таймеров) ---- */
+
+// Путь сделки состоит из TRADE_CANDLES свечей, идущих одна за другой —
+// каждая "дорисовывается" на своём отрезке времени, а не всё за одну свечу.
+function updateGrowingPath(trade, totalProgress) {
+    const growT = clamp01(totalProgress / TRADE_GROW_END);
+    const segment = 1 / trade.pathCandles.length;
+    let prevClose = trade.entryPrice;
+
+    for (let i = 0; i < trade.pathCandles.length; i++) {
+        const segStart = i * segment;
+        const segEnd = segStart + segment;
+        const localT = clamp01((growT - segStart) / segment);
+        const eased = 1 - Math.pow(1 - localT, 3);
+
+        const target = trade.pathCandles[i];
+        const candleIndex = trade.entryIndex + 1 + i;
+        const candle = marketCandles[candleIndex];
+        if (candle) {
+            candle.o = prevClose;
+            candle.c = prevClose + (target.c - prevClose) * eased;
+            candle.h = prevClose + (target.h - prevClose) * eased;
+            candle.l = prevClose + (target.l - prevClose) * eased;
+            candle.v = target.v * eased;
+
+            // как только эта свеча только что "дорисовалась" впервые — фиксируем
+            // всплывающую цифру текущего прогресса по сделке
+            if (localT >= 0.999 && !trade.tickFired[i]) {
+                trade.tickFired[i] = true;
+                spawnTickPopup(trade, candleIndex, target.c);
+            }
+        }
+        prevClose = target.c;
+    }
+
+    if (!trade.revealed && totalProgress >= TRADE_GROW_END) {
+        revealTradeResult(trade);
+    }
+}
+
+function spawnTickPopup(trade, candleIndex, priceAtTick) {
+    const canvas = document.getElementById('marketCanvas');
+    if (!canvas) return;
+    const cssWidth = canvas.clientWidth || 320;
+    const cssHeight = canvas.clientHeight || 180;
+    const geo = computeChartGeometry(cssWidth, cssHeight);
+
+    const favorable = trade.direction === 'up'
+        ? (priceAtTick - trade.entryPrice)
+        : (trade.entryPrice - priceAtTick);
+    const movePercent = (favorable / trade.entryPrice) * 100;
+    const estimate = estimateNetChange(trade.amount, movePercent);
+
+    trade.tickPopups.push({
+        dataX: indexToX(candleIndex, geo),
+        dataY: priceToY(priceAtTick, geo) - 10,
+        text: formatSignedMoney(estimate),
+        positive: estimate >= 0,
+        bornAt: performance.now()
+    });
+}
+
+function runTradeAnimation() {
+    const trade = state.activeTrade;
+    if (!trade) return;
+
+    if (tradeAnimFrameId) {
+        cancelAnimationFrame(tradeAnimFrameId);
+        tradeAnimFrameId = null;
+    }
+
+    function frame(now) {
+        const elapsed = now - trade.animStartTime;
+        const totalProgress = Math.min(elapsed / trade.durationMs, 1);
+        trade.animProgress = totalProgress;
+
+        updateGrowingPath(trade, totalProgress);
+        drawMarketChart();
+
+        if (totalProgress < 1) {
+            tradeAnimFrameId = requestAnimationFrame(frame);
+        } else {
+            tradeAnimFrameId = null;
+            finishTradeAnimation();
+        }
+    }
+
+    tradeAnimFrameId = requestAnimationFrame(frame);
+}
+
+function finishTradeAnimation() {
+    state.activeTrade = null;
+    drawMarketChart();
+    state.tradeInProgress = false;
+    const amt = getEnteredAmount();
+    document.getElementById('upButton').disabled = amt <= 0;
+    document.getElementById('downButton').disabled = amt <= 0;
 }
 
 function switchTab(pageId, evt) {
@@ -854,6 +1290,25 @@ function round2(value) {
     return Math.round(value * 100) / 100;
 }
 
+/* =========================================================
+   ТРЕЙДИНГОВАЯ СДЕЛКА ВВЕРХ / ВНИЗ — ПРОПОРЦИОНАЛЬНЫЙ РЕЗУЛЬТАТ
+   ========================================================= */
+
+// Чем дальше цена прошла в выбранную сторону — тем больше прибыль (до потолка
+// MAX_PAYOUT_PERCENT). Чем дальше против — тем больше теряется от ставки
+// (от MIN_LOSS_FRACTION до полной суммы). movePercent — движение цены в ПОЛЬЗУ
+// направления сделки (отрицательное значит движение против).
+function estimateNetChange(amount, movePercent) {
+    if (movePercent >= 0) {
+        const fraction = clamp01(movePercent / MOVE_SCALE_PERCENT);
+        return round2(amount * fraction * (MAX_PAYOUT_PERCENT / 100));
+    } else {
+        const against = Math.abs(movePercent);
+        const fraction = MIN_LOSS_FRACTION + (1 - MIN_LOSS_FRACTION) * clamp01(against / MOVE_SCALE_PERCENT);
+        return round2(-amount * fraction);
+    }
+}
+
 function bindDirectionButtons() {
     document.getElementById('upButton').addEventListener('click', () => placeTrade('up'));
     document.getElementById('downButton').addEventListener('click', () => placeTrade('down'));
@@ -871,17 +1326,63 @@ function placeTrade(direction) {
             showNotice('Недостаточно средств на счёте для этой сделки', false);
             return;
         }
-        if (!state.currentPayoutPercent) {
-            state.currentPayoutPercent = Math.floor(randomBetween(80, 90));
-        }
 
         state.tradeInProgress = true;
         document.getElementById('upButton').disabled = true;
         document.getElementById('downButton').disabled = true;
 
-        adjustBalance(-amount);
+        const entryPrice = marketCandles[marketCandles.length - 1].c;
 
-        runTradeCountdown(() => resolveTrade(direction, amount, state.currentPayoutPercent));
+        // Весь путь цены на время сделки считается один раз, сразу, тем же
+        // процессом случайного блуждания, что рисует ленту — дальше это
+        // только красиво показываем: свечи "дорисовываются" одна за другой
+        // от точки входа до уже известного финала.
+        const pathCandles = [];
+        let cursor = entryPrice;
+        for (let i = 0; i < TRADE_CANDLES; i++) {
+            const c = buildNextCandle(cursor);
+            pathCandles.push(c);
+            cursor = c.c;
+        }
+        const finalPrice = pathCandles[pathCandles.length - 1].c;
+
+        const favorableMove = direction === 'up'
+            ? (finalPrice - entryPrice)
+            : (entryPrice - finalPrice);
+        const movePercent = (favorableMove / entryPrice) * 100;
+        const netChange = estimateNetChange(amount, movePercent);
+        const won = netChange >= 0;
+
+        adjustBalance(-amount); // ставка списывается сразу при входе в сделку
+
+        for (let i = 0; i < TRADE_CANDLES; i++) {
+            const growingCandle = { o: entryPrice, h: entryPrice, l: entryPrice, c: entryPrice, v: 0 };
+            marketCandles.push(growingCandle);
+        }
+        while (marketCandles.length > 34) marketCandles.shift();
+
+        const expiryIndex = marketCandles.length - 1;
+        const entryIndex = expiryIndex - TRADE_CANDLES;
+
+        state.activeTrade = {
+            entryIndex: entryIndex,
+            expiryIndex: expiryIndex,
+            entryPrice: entryPrice,
+            direction: direction,
+            pathCandles: pathCandles,
+            tickFired: new Array(TRADE_CANDLES).fill(false),
+            tickPopups: [],
+            won: won,
+            netChange: netChange,
+            amount: amount,
+            revealed: false,
+            result: null,
+            animProgress: 0,
+            animStartTime: performance.now(),
+            durationMs: randomBetween(TRADE_MIN_MS, TRADE_MAX_MS)
+        };
+
+        runTradeAnimation();
     } catch (err) {
         console.error('Ошибка открытия сделки:', err);
         showNotice('Ошибка исполнения ордера', false);
@@ -889,63 +1390,29 @@ function placeTrade(direction) {
     }
 }
 
-function runTradeCountdown(onComplete) {
-    const overlay = document.getElementById('orderOverlay');
-    const countdownEl = document.getElementById('orderCountdown');
-    let secondsLeft = 3;
-    countdownEl.textContent = secondsLeft;
-    overlay.style.display = 'flex';
+// Раскрытие результата: срабатывает один раз, ровно в момент, когда путь
+// цены дорисовался до финального значения — баланс/история/уведомление
+// синхронизированы с тем, что видно на графике.
+function revealTradeResult(trade) {
+    trade.revealed = true;
+    trade.result = trade.won ? 'win' : 'lose';
 
-    const timer = setInterval(() => {
-        secondsLeft -= 1;
-        if (secondsLeft > 0) {
-            countdownEl.textContent = secondsLeft;
-        } else {
-            clearInterval(timer);
-            overlay.style.display = 'none';
-            onComplete();
-        }
-    }, 1000);
-}
+    if (trade.netChange !== 0) {
+        adjustBalance(trade.netChange);
+    }
+    addHistoryEntry(trade.direction, trade.amount, trade.netChange);
 
-function resolveTrade(direction, amount, payoutPercent) {
-    try {
-        const last = marketCandles[marketCandles.length - 1];
-        const nextCandle = buildNextCandle(last.c);
-        marketCandles.push(nextCandle);
-        if (marketCandles.length > 34) marketCandles.shift();
-        drawMarketChart();
-
-        const candleWentUp = nextCandle.c >= nextCandle.o;
-        const won = (direction === 'up' && candleWentUp) || (direction === 'down' && !candleWentUp);
-
-        let netChange;
-        if (won) {
-            const profit = round2(amount * (payoutPercent / 100));
-            netChange = amount + profit;
-            adjustBalance(netChange);
-        } else {
-            netChange = -amount;
-        }
-
-        addHistoryEntry(direction, amount, netChange);
-
-        const arrow = direction === 'up' ? '▲' : '▼';
-        if (won) {
-            showNotice(`${arrow} Сделка выиграна: ${formatSignedMoney(netChange)}`, true);
-        } else {
-            showNotice(`${arrow} Сделка проиграна: ${formatSignedMoney(netChange)}`, false);
-        }
-
-        state.tradeInProgress = false;
-        document.getElementById('upButton').disabled = getEnteredAmount() <= 0;
-        document.getElementById('downButton').disabled = getEnteredAmount() <= 0;
-    } catch (err) {
-        console.error('Ошибка резолва сделки:', err);
-        showNotice('Ошибка исполнения ордера', false);
-        state.tradeInProgress = false;
+    const arrow = trade.direction === 'up' ? '▲' : '▼';
+    if (trade.result === 'win') {
+        showNotice(`${arrow} Сделка закрыта в плюс: ${formatSignedMoney(trade.netChange)}`, true);
+    } else {
+        showNotice(`${arrow} Сделка закрыта в минус: ${formatSignedMoney(trade.netChange)}`, false);
     }
 }
+
+/* =========================================================
+   ИСТОРИЯ ОПЕРАЦИЙ
+   ========================================================= */
 
 function addHistoryEntry(direction, amount, netChange) {
     state.history.unshift({
@@ -1010,6 +1477,10 @@ function renderHistory() {
         list.appendChild(row);
     });
 }
+
+/* =========================================================
+   ПРОЧИЕ КНОПКИ
+   ========================================================= */
 
 function bindStaticButtons() {
     document.getElementById('recapButton').addEventListener('click', executeRecapitalization);
