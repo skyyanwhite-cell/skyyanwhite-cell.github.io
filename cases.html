@@ -1540,9 +1540,10 @@ function revealTradeResult(trade) {
     trade.revealed = true;
     trade.result = trade.won ? 'win' : 'lose';
 
-    if (trade.netChange !== 0) {
-        adjustBalance(trade.netChange);
-    }
+    // Возвращаем забронированную ставку вместе с результатом сделки
+    const refundAmount = trade.amount + trade.netChange;
+    adjustBalance(refundAmount);
+    
     addHistoryEntry(trade.direction, trade.amount, trade.netChange);
 
     const arrow = trade.direction === 'up' ? '▲' : '▼';
