@@ -598,16 +598,22 @@ async function loadUserProfileFromServer() {
     }
 }
 
-async function syncDataWithBot(isTrade = false) {
+let hasUnsyncedTrade = false; // Глобальный флаг для запоминания сделок
+
+async function syncDataWithBot() {
     if (syncInFlight || profileLoadInFlight) return;
     if (!state.userId) return;
+
+    // Забираем флаг сделки и сразу сбрасываем его
+    const sendingTrade = hasUnsyncedTrade;
+    hasUnsyncedTrade = false; 
 
     const payload = {
         user_id: state.userId,
         balance: state.balance,
         history: state.history,
         initData: getInitData(),
-        trade_done: isTrade 
+        trade_done: sendingTrade // Отправляем true, если накопилась сделка
     };
 
     syncInFlight = true;
@@ -626,6 +632,12 @@ async function syncDataWithBot(isTrade = false) {
     } catch (err) {
         console.error('Ошибка синхронизации с ботом:', err);
         showSyncIndicator('ошибка синхронизации', true);
+        
+        // ВАЖНО: Если произошла ошибка сети, возвращаем флаг сделки обратно!
+        // Она отправится при следующей успешной попытке.
+        if (sendingTrade) {
+            hasUnsyncedTrade = true;
+        }
     } finally {
         syncInFlight = false;
     }
@@ -633,13 +645,14 @@ async function syncDataWithBot(isTrade = false) {
 
 function scheduleSync(isTrade = false) {
     if (!state.profileLoaded) return;
-    clearTimeout(syncDebounceTimer);
-    syncDebounceTimer = setTimeout(() => syncDataWithBot(isTrade), SYNC_DEBOUNCE_MS);
-}
+    
+    // Если пришел сигнал о новой сделке - запоминаем глобально!
+    if (isTrade) {
+        hasUnsyncedTrade = true;
+    }
 
-function startPeriodicSync() {
-    if (syncIntervalTimer) clearInterval(syncIntervalTimer);
-    syncIntervalTimer = setInterval(syncDataWithBot, SYNC_INTERVAL_MS);
+    clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = setTimeout(syncDataWithBot, SYNC_DEBOUNCE_MS);
 }
 
 async function init() {
