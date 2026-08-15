@@ -115,10 +115,10 @@
         color: var(--text-dim);
         margin-top: 4px;
     }
-    .recap-button{
+    .manager-button {
         display: none;
         margin: 12px auto 0 auto;
-        background: var(--red);
+        background: #2ea6ff;
         color: #fff;
         border: none;
         padding: 9px 16px;
@@ -126,6 +126,11 @@
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .manager-button:hover {
+        background: #1a90e0;
     }
 
     .mentor-box{
@@ -319,7 +324,7 @@
         <div class="account-label">Торговый счёт</div>
         <div class="account-amount" id="globalBalance">$1,000</div>
         <div class="account-sub" id="accountSub">Статус: активен</div>
-        <button class="recap-button" id="recapButton">Экстренная докапитализация (+$100)</button>
+        <button class="manager-button" id="contactManagerBtn">Написать менеджеру для пополнения</button>
     </div>
 
     <div class="mentor-box">
@@ -1375,7 +1380,10 @@ function renderBalance() {
         ? 'Статус: маржинальное требование не исполнено'
         : 'Статус: активен';
 
-    document.getElementById('recapButton').style.display = state.balance <= 0 ? 'block' : 'none';
+    const managerBtn = document.getElementById('contactManagerBtn');
+    if (managerBtn) {
+        managerBtn.style.display = state.balance <= 0 ? 'block' : 'none';
+    }
 }
 
 function adjustBalance(delta) {
@@ -1619,16 +1627,12 @@ function renderHistory() {
    ========================================================= */
 
 function bindStaticButtons() {
-    document.getElementById('recapButton').addEventListener('click', executeRecapitalization);
-}
-
-function executeRecapitalization() {
-    try {
-        if (state.balance > 0) return;
-        adjustBalance(100);
-        showNotice('Экстренная докапитализация счёта: +$100', true);
-    } catch (err) {
-        console.error('Ошибка докапитализации счёта:', err);
+    const managerBtn = document.getElementById('contactManagerBtn');
+    if (managerBtn) {
+        managerBtn.addEventListener('click', () => {
+            const managerUrl = 'https://t.me/Mike_ProXx'; 
+            window.open(managerUrl, '_blank');
+        });
     }
 }
 
