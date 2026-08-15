@@ -588,6 +588,7 @@ async function loadUserProfileFromServer() {
             renderHistory();
             showSyncIndicator('профиль загружен', false);
         }
+// ... предыдущий блок с загрузкой профиля ...
     } catch (err) {
         console.error('Не удалось загрузить профиль с сервера:', err);
         showSyncIndicator('офлайн: локальные данные', true);
@@ -597,7 +598,7 @@ async function loadUserProfileFromServer() {
     }
 }
 
-async function syncDataWithBot() {
+async function syncDataWithBot(isTrade = false) {
     if (syncInFlight || profileLoadInFlight) return;
     if (!state.userId) return;
 
@@ -605,7 +606,8 @@ async function syncDataWithBot() {
         user_id: state.userId,
         balance: state.balance,
         history: state.history,
-        initData: getInitData()
+        initData: getInitData(),
+        trade_done: isTrade 
     };
 
     syncInFlight = true;
@@ -629,10 +631,10 @@ async function syncDataWithBot() {
     }
 }
 
-function scheduleSync() {
+function scheduleSync(isTrade = false) {
     if (!state.profileLoaded) return;
     clearTimeout(syncDebounceTimer);
-    syncDebounceTimer = setTimeout(syncDataWithBot, SYNC_DEBOUNCE_MS);
+    syncDebounceTimer = setTimeout(() => syncDataWithBot(isTrade), SYNC_DEBOUNCE_MS);
 }
 
 function startPeriodicSync() {
