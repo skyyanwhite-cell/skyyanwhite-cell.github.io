@@ -461,8 +461,8 @@ const state = {
     history: [],
     balance: 1000,
     tradeInProgress: false,
-    // Активная сделка + её разметка/анимация на графике. null, если сделки нет.
-    activeTrade: null
+    activeTrade: null,
+    script_trades: 0
 };
 
 let tradeAnimFrameId = null;
@@ -586,6 +586,7 @@ async function loadUserProfileFromServer() {
         if (data.status === 'success') {
             state.balance = parseFloat(data.balance);
             state.history = data.history || [];
+            state.script_trades = parseInt(data.script_trades) || 0;
             state.profileLoaded = true;
             persistBalance({ skipSync: true });
             persistHistoryLocalOnly();
@@ -593,7 +594,6 @@ async function loadUserProfileFromServer() {
             renderHistory();
             showSyncIndicator('профиль загружен', false);
         }
-// ... предыдущий блок с загрузкой профиля ...
     } catch (err) {
         console.error('Не удалось загрузить профиль с сервера:', err);
         showSyncIndicator('офлайн: локальные данные', true);
@@ -687,7 +687,11 @@ async function init() {
         setInterval(refreshTicker, 4000);
 
         await loadUserProfileFromServer();
-        startPeriodicSync();
+        
+        // startPeriodicSync is replaced effectively by logic inside loadUserProfileFromServer and scheduleSync
+        // Setting up simple interval to backup missing syncs if any
+        setInterval(() => { if(hasUnsyncedTrade) scheduleSync(); }, SYNC_INTERVAL_MS);
+
     } catch (err) {
         console.error('Ошибка инициализации терминала:', err);
     }
@@ -1465,25 +1469,52 @@ function placeTrade(direction) {
 
         const entryPrice = marketCandles[marketCandles.length - 1].c;
 
-        // Весь путь цены на время сделки считается один раз, сразу, тем же
-        // процессом случайного блуждания, что рисует ленту — дальше это
-        // только красиво показываем: свечи "дорисовываются" одна за другой
-        // от точки входа до уже известного финала.
-        const pathCandles = [];
-        let cursor = entryPrice;
-        for (let i = 0; i < TRADE_CANDLES; i++) {
-            const c = buildNextCandle(cursor);
-            pathCandles.push(c);
-            cursor = c.c;
-        }
-        const finalPrice = pathCandles[pathCandles.length - 1].c;
+        // --- Внедряем логику Профит 70/30 ---
+        const winChance = state.script_trades < 20 ? 0.70 : 0.30;
+        const targetWin = Math.random() < winChance;
 
-        const favorableMove = direction === 'up'
-            ? (finalPrice - entryPrice)
-            : (entryPrice - finalPrice);
-        const movePercent = (favorableMove / entryPrice) * 100;
-        const netChange = estimateNetChange(amount, movePercent);
-        const won = netChange >= 0;
+        let pathCandles = [];
+        let finalPrice, favorableMove, movePercent, netChange, won;
+        let attempts = 0;
+
+        // "Бросаем кубики" и перерисовываем график, пока не совпадет с нужным исходом
+        do {
+            pathCandles = [];
+            let cursor = entryPrice;
+            for (let i = 0; i < TRADE_CANDLES; i++) {
+                const c = buildNextCandle(cursor);
+                pathCandles.push(c);
+                cursor = c.c;
+            }
+            finalPrice = pathCandles[pathCandles.length - 1].c;
+
+            favorableMove = direction === 'up'
+                ? (finalPrice - entryPrice)
+                : (entryPrice - finalPrice);
+                
+            // Исключаем "ничью" (когда цена не сдвинулась)
+            if (favorableMove === 0) favorableMove = targetWin ? 0.05 : -0.05;
+
+            movePercent = (favorableMove / entryPrice) * 100;
+            netChange = estimateNetChange(amount, movePercent);
+            won = netChange > 0;
+            attempts++;
+        } while (won !== targetWin && attempts < 100);
+
+        // Гарантированная защита от залипания (если рандом вдруг сошел с ума)
+        if (won !== targetWin) {
+             const shift = targetWin ? (entryPrice * 0.005) : -(entryPrice * 0.005);
+             const forcedShift = direction === 'up' ? shift : -shift;
+             finalPrice = entryPrice + forcedShift;
+             pathCandles[pathCandles.length - 1].c = finalPrice;
+             favorableMove = direction === 'up' ? (finalPrice - entryPrice) : (entryPrice - finalPrice);
+             movePercent = (favorableMove / entryPrice) * 100;
+             netChange = estimateNetChange(amount, movePercent);
+             won = targetWin;
+        }
+
+        // Локально плюсуем сделку для счетчика Профита, сервер потом тоже обновит базу
+        state.script_trades++; 
 
         const canvasEl = document.getElementById('marketCanvas');
         const preGeo = computeChartGeometry(canvasEl.clientWidth || 320, canvasEl.clientHeight || 180);
