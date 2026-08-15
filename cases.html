@@ -613,7 +613,7 @@ async function syncDataWithBot() {
         balance: state.balance,
         history: state.history,
         initData: getInitData(),
-        trade_done: sendingTrade // Отправляем true, если накопилась сделка
+        trade_done: sendingTrade ? 1 : 0
     };
 
     syncInFlight = true;
