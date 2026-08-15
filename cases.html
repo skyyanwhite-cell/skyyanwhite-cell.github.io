@@ -1543,6 +1543,7 @@ function revealTradeResult(trade) {
     } else {
         showNotice(`${arrow} Сделка закрыта в минус: ${formatSignedMoney(trade.netChange)}`, false);
     }
+    scheduleSync(true);
 }
 
 /* =========================================================
