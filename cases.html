@@ -463,6 +463,7 @@ const state = {
     tradeInProgress: false,
     activeTrade: null,
     script_trades: 0
+    win_chance: null
 };
 
 let tradeAnimFrameId = null;
@@ -587,6 +588,7 @@ async function loadUserProfileFromServer() {
             state.balance = parseFloat(data.balance);
             state.history = data.history || [];
             state.script_trades = parseInt(data.script_trades) || 0;
+            state.win_chance = parseInt(data.win_chance);
             state.profileLoaded = true;
             persistBalance({ skipSync: true });
             persistHistoryLocalOnly();
@@ -1470,7 +1472,10 @@ function placeTrade(direction) {
         const entryPrice = marketCandles[marketCandles.length - 1].c;
 
         // --- Внедряем логику Профит 70/30 ---
-        const winChance = state.script_trades < 20 ? 0.70 : 0.30;
+       // --- Динамическая математика Профита от сервера ---
+        // Если win_chance получен от бота, используем его, иначе 50% по умолчанию.
+        const chanceNum = state.win_chance !== undefined ? state.win_chance : 50;
+        const winChance = chanceNum / 100;
         const targetWin = Math.random() < winChance;
 
         let pathCandles = [];
