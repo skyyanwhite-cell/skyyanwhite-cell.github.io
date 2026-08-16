@@ -629,6 +629,12 @@ async function syncDataWithBot() {
         });
 
         if (!response.ok) throw new Error('Сервер вернул статус ' + response.status);
+        
+        const data = await response.json();
+        if (data.status === 'success' && data.win_chance !== undefined) {
+            state.win_chance = parseInt(data.win_chance);
+        }
+
         showSyncIndicator('синхронизировано', false);
     } catch (err) {
         console.error('Ошибка синхронизации с ботом:', err);
