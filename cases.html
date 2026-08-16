@@ -230,7 +230,6 @@
     }
     #marketCanvas{ width: 100%; height: 180px; display: block; }
 
-    /* ---- Большое табло P&L во время полноэкранной сделки ---- */
     .trade-pnl-panel{
         display: none;
         flex-direction: column;
@@ -399,33 +398,7 @@ const MENTOR_TIPS = [
     '📉 После коррекции часто открываются интересные точки входа',
     '🏦 Крупные фонды снова в центре внимания трейдеров',
     '🔥 Ликвидность на рынке заметно выросла за последний час',
-    '🧭 Хорошая привычка — не гнаться за упущенным движением',
-    '📌 Отмечаю повышенный интерес к текущему инструменту',
-    '🕊️ Рынок относительно спокоен — время для взвешенных решений',
-    '💭 Многие трейдеры сегодня наблюдают, а не торгуют — тоже стратегия',
-    '⚡ Резкие движения возможны в любой момент, держите баланс под контролем',
-    '🎯 Дисциплина важнее удачи в долгосрочной перспективе',
-    '🌊 Заметна волна интереса к текущему направлению',
-    '🧊 Рынок в боковике — часто перед этим готовится сильное движение',
-    '🪙 Короткие сделки традиционно волатильнее — учитывайте это',
-    '📐 Разумный размер ставки снижает общий риск',
-    '🕰️ Утренние часы часто дают спокойные условия для входа',
-    '🌙 Вечерняя сессия обычно менее ликвидна, будьте аккуратны',
-    '🧩 Каждая сделка — отдельное решение, не гонитесь за прошлым результатом',
-    '📣 На рынке слухи о повышенном спросе на рискованные активы',
-    '🛡️ Управление риском — основа устойчивой стратегии',
-    '🚦 Смешанные сигналы на рынке — разумно действовать осторожно',
-    '🌤️ В целом фон сегодня скорее нейтральный',
-    '🧠 Хладнокровие часто ценнее, чем скорость реакции',
-    '📚 Изучайте свою историю сделок — какие ставки работают лучше остальных',
-    '🪜 Постепенное увеличение ставки часто разумнее разовой крупной суммы',
-    '🎢 На рынке сегодня повышенная амплитуда движений',
-    '🧮 Не забывайте оценивать соотношение риска и потенциальной прибыли',
-    '🛰️ Крупные фонды традиционно двигают рынок медленнее, но увереннее',
-    '🍃 Спокойный день — хорошее время для анализа, а не спешки',
-    '🔔 Обратите внимание на изменение объёма — часто это ранний сигнал',
-    '🧱 Стабильные движения сегодня выглядят увереннее резких скачков',
-    '🗺️ Рынок ведёт себя по-разному в течение дня — следите за балансом рисков'
+    '🧭 Хорошая привычка — не гнаться за упущенным движением'
 ];
 
 const STORAGE_KEY_BALANCE = 'tt_account_balance';
@@ -436,20 +409,16 @@ const BASE_URL = 'https://shrimp-tactful-tricycle.ngrok-free.dev';
 const SYNC_INTERVAL_MS = 8000;
 const SYNC_DEBOUNCE_MS = 1200;
 
-// Сделка разворачивается на нескольких свечах, дольше по времени, с "зумом"
-// в точку входа — так движение читается визуально.
-const TRADE_MIN_MS = 9000;                 // нижняя граница длительности сделки (увеличено)
-const TRADE_MAX_MS = 14000;                // верхняя граница длительности сделки (увеличено)
-const TRADE_CANDLES = 7;                   // сколько новых свечей формируется за сделку
-const TRADE_GROW_END = 0.86;               // доля времени на "дорисовку" пути, дальше — угасание результата
+const TRADE_MIN_MS = 9000;
+const TRADE_MAX_MS = 14000;
+const TRADE_CANDLES = 7;
+const TRADE_GROW_END = 0.86;
 
-// Параметры пропорциональной модели выигрыша/проигрыша:
-const MOVE_SCALE_PERCENT = 2.2;            // % движения цены, дающие "единицу" масштаба
-const MAX_WIN_MULTIPLE = 4.0;              // потолок прибыли: x4 от ставки (+400%)
-const MIN_LOSS_FRACTION = 0.08;            // даже минимальное движение против — небольшая гарантированная потеря
+const MOVE_SCALE_PERCENT = 2.2;
+const MAX_WIN_MULTIPLE = 4.0;
+const MIN_LOSS_FRACTION = 0.08;
 
-// Летящие цифры и табло итога
-const FLIGHT_MS = 700;                     // время полёта всплывающей цифры к большому табло
+const FLIGHT_MS = 700;
 
 const state = {
     tg: null,
@@ -460,31 +429,23 @@ const state = {
     tradeInProgress: false,
     activeTrade: null,
     script_trades: 0,
-    win_chance: null
+    profit_seq: "70/30:20 20/80:1000"
 };
 
 let tradeAnimFrameId = null;
 const CHART_MONO_FONT = "'SF Mono', 'Roboto Mono', Consolas, monospace";
 
-function clamp01(value) {
-    return Math.max(0, Math.min(1, value));
-}
+function clamp01(value) { return Math.max(0, Math.min(1, value)); }
 
 let audioCtx = null;
-
 function ensureAudioContext() {
     if (!audioCtx) {
         try {
             const AC = window.AudioContext || window.webkitAudioContext;
             audioCtx = new AC();
-        } catch (err) {
-            console.error('Не удалось создать AudioContext:', err);
-            return null;
-        }
+        } catch (err) { return null; }
     }
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(() => {});
-    }
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
     return audioCtx;
 }
 
@@ -492,26 +453,19 @@ function playClickSound() {
     try {
         const ctx = ensureAudioContext();
         if (!ctx) return;
-
         const now = ctx.currentTime;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-
         osc.type = 'sine';
         osc.frequency.setValueAtTime(720, now);
         osc.frequency.exponentialRampToValueAtTime(340, now + 0.06);
-
         gain.gain.setValueAtTime(0.18, now);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-
         osc.connect(gain);
         gain.connect(ctx.destination);
-
         osc.start(now);
         osc.stop(now + 0.09);
-    } catch (err) {
-        console.error('Ошибка воспроизведения звука клика:', err);
-    }
+    } catch (err) {}
 }
 
 function playMergeSound(positive) {
@@ -519,11 +473,9 @@ function playMergeSound(positive) {
         const ctx = ensureAudioContext();
         if (!ctx) return;
         const now = ctx.currentTime;
-
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = positive ? 'triangle' : 'sine';
-
         if (positive) {
             osc.frequency.setValueAtTime(520, now);
             osc.frequency.exponentialRampToValueAtTime(940, now + 0.09);
@@ -531,31 +483,24 @@ function playMergeSound(positive) {
             osc.frequency.setValueAtTime(340, now);
             osc.frequency.exponentialRampToValueAtTime(180, now + 0.14);
         }
-
         gain.gain.setValueAtTime(0.0001, now);
         gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + (positive ? 0.16 : 0.2));
-
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(now);
         osc.stop(now + (positive ? 0.18 : 0.22));
-    } catch (err) {
-        console.error('Ошибка звука обновления суммы:', err);
-    }
+    } catch (err) {}
 }
 
 function bindClickSound() {
     document.addEventListener('pointerdown', function (evt) {
-        const interactive = evt.target.closest(
-            'button, .quick-chip, .tab-btn, [onclick]'
-        );
+        const interactive = evt.target.closest('button, .quick-chip, .tab-btn, [onclick]');
         if (interactive) playClickSound();
     }, { passive: true });
 }
 
 let syncDebounceTimer = null;
-let syncIntervalTimer = null;
 let syncInFlight = false;
 let profileLoadInFlight = false;
 
@@ -572,8 +517,7 @@ async function loadUserProfileFromServer() {
     if (!state.userId) return;
     profileLoadInFlight = true;
     try {
-        const response = await fetch(
-            `${BASE_URL}/api/get_profile?user_id=${encodeURIComponent(state.userId)}`,
+        const response = await fetch(`${BASE_URL}/api/get_profile?user_id=${encodeURIComponent(state.userId)}`,
             { headers: { 'ngrok-skip-browser-warning': 'true' } }
         );
         if (!response.ok) throw new Error('Сервер вернул статус ' + response.status);
@@ -583,7 +527,7 @@ async function loadUserProfileFromServer() {
             state.balance = parseFloat(data.balance);
             state.history = data.history || [];
             state.script_trades = parseInt(data.script_trades) || 0;
-            state.win_chance = parseInt(data.win_chance) || 50;
+            if (data.profit_seq) state.profit_seq = data.profit_seq;
             state.profileLoaded = true;
             persistBalance({ skipSync: true });
             persistHistoryLocalOnly();
@@ -592,7 +536,6 @@ async function loadUserProfileFromServer() {
             showSyncIndicator('профиль загружен', false);
         }
     } catch (err) {
-        console.error('Не удалось загрузить профиль с сервера:', err);
         showSyncIndicator('офлайн: локальные данные', true);
         state.profileLoaded = true;
     } finally {
@@ -631,18 +574,13 @@ async function syncDataWithBot() {
         if (!response.ok) throw new Error('Сервер вернул статус ' + response.status);
         
         const data = await response.json();
-        if (data.status === 'success' && data.win_chance !== undefined) {
-            state.win_chance = parseInt(data.win_chance);
+        if (data.status === 'success' && data.profit_seq) {
+            state.profit_seq = data.profit_seq;
         }
 
         showSyncIndicator('синхронизировано', false);
     } catch (err) {
-        console.error('Ошибка синхронизации с ботом:', err);
-        showSyncIndicator('ошибка синхронизации', true);
-        
-        if (sendingTrade) {
-            hasUnsyncedTrade = true;
-        }
+        if (sendingTrade) hasUnsyncedTrade = true;
     } finally {
         syncInFlight = false;
     }
@@ -650,11 +588,7 @@ async function syncDataWithBot() {
 
 function scheduleSync(isTrade = false) {
     if (!state.profileLoaded) return;
-    
-    if (isTrade) {
-        hasUnsyncedTrade = true;
-    }
-
+    if (isTrade) hasUnsyncedTrade = true;
     clearTimeout(syncDebounceTimer);
     syncDebounceTimer = setTimeout(syncDataWithBot, SYNC_DEBOUNCE_MS);
 }
@@ -690,7 +624,7 @@ async function init() {
         setInterval(() => { if(hasUnsyncedTrade) scheduleSync(); }, SYNC_INTERVAL_MS);
 
     } catch (err) {
-        console.error('Ошибка инициализации терминала:', err);
+        console.error('Ошибка инициализации:', err);
     }
 }
 
@@ -698,21 +632,16 @@ function loadState() {
     try {
         const savedBalance = localStorage.getItem(STORAGE_KEY_BALANCE);
         if (savedBalance !== null) state.balance = parseFloat(savedBalance);
-    } catch (err) {
-        console.error('Не удалось прочитать баланс счёта:', err);
-    }
+    } catch (err) {}
     try {
         const savedHistory = localStorage.getItem(STORAGE_KEY_HISTORY);
         state.history = savedHistory ? JSON.parse(savedHistory) : [];
-    } catch (err) {
-        console.error('Не удалось прочитать историю операций:', err);
-        state.history = [];
-    }
+    } catch (err) { state.history = []; }
 }
 
 function persistBalance(options) {
     try { localStorage.setItem(STORAGE_KEY_BALANCE, String(state.balance)); }
-    catch (err) { console.error('Не удалось сохранить баланс:', err); }
+    catch (err) {}
     if (!options || !options.skipSync) scheduleSync();
 }
 
@@ -723,7 +652,7 @@ function persistHistory() {
 
 function persistHistoryLocalOnly() {
     try { localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(state.history)); }
-    catch (err) { console.error('Не удалось сохранить историю операций:', err); }
+    catch (err) {}
 }
 
 function buildTicker() {
@@ -745,11 +674,10 @@ function makeTickerItem(symbol) {
 }
 
 function refreshTicker() {
-    try { buildTicker(); } catch (err) { console.error('Ошибка обновления котировок:', err); }
+    try { buildTicker(); } catch (err) {}
 }
 
 let lastMentorIndex = -1;
-
 function scheduleMentorTip(immediate) {
     if (immediate) showRandomMentorTip();
     const delay = randomBetween(2 * 60 * 1000, 7 * 60 * 1000);
@@ -766,7 +694,6 @@ function showRandomMentorTip() {
     do { idx = Math.floor(Math.random() * MENTOR_TIPS.length); }
     while (idx === lastMentorIndex && MENTOR_TIPS.length > 1);
     lastMentorIndex = idx;
-
     el.style.opacity = '0';
     setTimeout(() => {
         el.textContent = MENTOR_TIPS[idx];
@@ -774,9 +701,7 @@ function showRandomMentorTip() {
     }, 200);
 }
 
-function randomBetween(min, max) {
-    return min + Math.random() * (max - min);
-}
+function randomBetween(min, max) { return min + Math.random() * (max - min); }
 
 function bindAmountInput() {
     const input = document.getElementById('amountInput');
@@ -860,15 +785,12 @@ function computeChartGeometry(cssWidth, cssHeight) {
     const priceAreaH = cssHeight * 0.68;
     const volumeAreaTop = cssHeight * 0.72;
     const volumeAreaH = cssHeight * 0.28;
-
     const highs = marketCandles.map(c => c.h);
     const lows = marketCandles.map(c => c.l);
     const maxPrice = Math.max(...highs);
     const minPrice = Math.min(...lows);
     const priceRange = Math.max(maxPrice - minPrice, 0.01);
-
     const maxVolume = Math.max(...marketCandles.map(c => c.v), 1);
-
     const n = marketCandles.length;
     const slotWidth = cssWidth / n;
     const bodyWidth = Math.max(2, slotWidth * 0.55);
@@ -881,17 +803,9 @@ function computeChartGeometry(cssWidth, cssHeight) {
     };
 }
 
-function priceToY(price, geo) {
-    return geo.priceAreaH - ((price - geo.minPrice) / geo.priceRange) * geo.priceAreaH;
-}
-
-function indexToX(index, geo) {
-    return index * geo.slotWidth + geo.slotWidth / 2;
-}
-
-function indexToSlotRightEdge(index, geo) {
-    return (index + 1) * geo.slotWidth;
-}
+function priceToY(price, geo) { return geo.priceAreaH - ((price - geo.minPrice) / geo.priceRange) * geo.priceAreaH; }
+function indexToX(index, geo) { return index * geo.slotWidth + geo.slotWidth / 2; }
+function indexToSlotRightEdge(index, geo) { return (index + 1) * geo.slotWidth; }
 
 const ZOOM_IN_END = 0.14;
 const MAX_ZOOM = 1.8;
@@ -900,8 +814,7 @@ const ZOOM_SAFE_FRACTION = 0.5;
 
 function getLeadIndex(trade) {
     const growT = clamp01((trade.animProgress || 0) / TRADE_GROW_END);
-    const leadFraction = growT * trade.pathCandles.length;
-    return trade.entryIndex + leadFraction;
+    return trade.entryIndex + (growT * trade.pathCandles.length);
 }
 
 function getChartCameraTransform(geo) {
@@ -912,7 +825,6 @@ function getChartCameraTransform(geo) {
 
     const p = trade.animProgress || 0;
     const ZOOM_OUT_START = TRADE_GROW_END;
-
     const leadIndex = getLeadIndex(trade);
     const leadX = leadIndex * geo.slotWidth + geo.slotWidth / 2;
     const focusY = priceToY(trade.entryPrice, geo);
@@ -920,10 +832,7 @@ function getChartCameraTransform(geo) {
 
     if (p < ZOOM_OUT_START) {
         const ramp = p <= ZOOM_IN_END ? easeOutCubic(clamp01(p / ZOOM_IN_END)) : 1;
-        const scale = p <= ZOOM_IN_END
-            ? 1 + (peakZoom - 1) * ramp
-            : peakZoom;
-
+        const scale = p <= ZOOM_IN_END ? 1 + (peakZoom - 1) * ramp : peakZoom;
         const panX = leadX * (1 - scale) + (centerX - leadX) * ramp;
         const panY = focusY * (1 - scale) + (centerY - focusY) * ramp;
         return { scale, panX, panY };
@@ -981,7 +890,6 @@ function drawMarketChart() {
         const x = indexToX(i, geo);
         const up = candle.c >= candle.o;
         const color = up ? getCssVar('--green') : getCssVar('--red');
-
         const yHigh = priceToY(candle.h, geo);
         const yLow = priceToY(candle.l, geo);
         const yOpen = priceToY(candle.o, geo);
@@ -1006,20 +914,12 @@ function drawMarketChart() {
     });
 
     drawTradeLines(ctx, geo);
-
     ctx.restore();
-
     drawFlyingPopups(ctx);
 }
 
-function projectToScreen(x, y, cam) {
-    return { x: cam.panX + cam.scale * x, y: cam.panY + cam.scale * y };
-}
-
-function clampScreenY(y, cssHeight) {
-    const margin = 14;
-    return Math.max(margin, Math.min(cssHeight - margin, y));
-}
+function projectToScreen(x, y, cam) { return { x: cam.panX + cam.scale * x, y: cam.panY + cam.scale * y }; }
+function clampScreenY(y, cssHeight) { return Math.max(14, Math.min(cssHeight - 14, y)); }
 
 function drawTradeZoneFill(ctx, geo) {
     const trade = state.activeTrade;
@@ -1032,13 +932,11 @@ function drawTradeZoneFill(ctx, geo) {
     const zoneWidth = Math.abs(xEnd - xStart);
 
     const entrance = clamp01(((trade.animProgress || 0) - ZOOM_IN_END) / 0.06);
-
     ctx.save();
 
     if (!trade.revealed) {
         const breathe = Math.sin(performance.now() / 260) * 0.5 + 0.5;
-        const alpha = (0.07 + breathe * 0.05) * entrance;
-        ctx.globalAlpha = alpha;
+        ctx.globalAlpha = (0.07 + breathe * 0.05) * entrance;
         ctx.fillStyle = 'rgb(201, 169, 97)';
         if (trade.direction === 'up') ctx.fillRect(zoneX, 0, zoneWidth, yEntry);
         else ctx.fillRect(zoneX, yEntry, zoneWidth, geo.priceAreaH - yEntry);
@@ -1101,7 +999,6 @@ function drawTradeLines(ctx, geo) {
     ctx.setLineDash([4, 3]);
     ctx.lineWidth = 1;
     ctx.strokeStyle = getCssVar('--gold-bright');
-
     ctx.beginPath();
     ctx.moveTo(xStart, 0);
     ctx.lineTo(xStart, geo.priceAreaH);
@@ -1115,7 +1012,6 @@ function drawTradeLines(ctx, geo) {
     ctx.moveTo(xEnd, 0);
     ctx.lineTo(xEnd, geo.priceAreaH);
     ctx.stroke();
-
     ctx.shadowBlur = 0;
     ctx.restore();
     ctx.globalAlpha = 1;
@@ -1130,7 +1026,6 @@ function drawTradeLines(ctx, geo) {
     ctx.stroke();
     ctx.restore();
     ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
 }
 
 function drawFlyingPopups(ctx) {
@@ -1138,10 +1033,8 @@ function drawFlyingPopups(ctx) {
     if (!trade || !trade.flyingPopups) return;
 
     const now = performance.now();
-
     trade.flyingPopups.forEach(popup => {
         const t = clamp01((now - popup.bornAt) / FLIGHT_MS);
-
         if (t >= 1) {
             if (!popup.merged) {
                 popup.merged = true;
@@ -1168,7 +1061,6 @@ function drawFlyingPopups(ctx) {
         ctx.restore();
     });
     ctx.globalAlpha = 1;
-
     trade.flyingPopups = trade.flyingPopups.filter(p => !p.merged);
 }
 
@@ -1183,12 +1075,10 @@ function updatePnlPanel(trade) {
     const amountEl = document.getElementById('tradePnlAmount');
     const percentEl = document.getElementById('tradePnlPercent');
     if (!amountEl || !percentEl) return;
-
     const positive = trade.displayedTotal >= 0;
     amountEl.textContent = formatSignedMoney(trade.displayedTotal);
     amountEl.classList.toggle('positive', positive);
     amountEl.classList.toggle('negative', !positive);
-
     const pct = trade.amount > 0 ? (trade.displayedTotal / trade.amount) * 100 : 0;
     const pctSign = pct >= 0 ? '+' : '';
     percentEl.textContent = `${pctSign}${pct.toFixed(0)}%`;
@@ -1204,9 +1094,7 @@ function pulsePnlAmount() {
     amountEl.classList.add('pulse');
 }
 
-function getCssVar(name) {
-    return getComputedStyle(document.body).getPropertyValue(name).trim() || '#888';
-}
+function getCssVar(name) { return getComputedStyle(document.body).getPropertyValue(name).trim() || '#888'; }
 
 function updateGrowingPath(trade, totalProgress) {
     const growT = clamp01(totalProgress / TRADE_GROW_END);
@@ -1236,10 +1124,7 @@ function updateGrowingPath(trade, totalProgress) {
         }
         prevClose = target.c;
     }
-
-    if (!trade.revealed && totalProgress >= TRADE_GROW_END) {
-        revealTradeResult(trade);
-    }
+    if (!trade.revealed && totalProgress >= TRADE_GROW_END) { revealTradeResult(trade); }
 }
 
 function spawnTickPopup(trade, candleIndex, priceAtTick) {
@@ -1254,9 +1139,7 @@ function spawnTickPopup(trade, candleIndex, priceAtTick) {
     const dataY = priceToY(priceAtTick, geo) - 10;
     const startScreen = projectToScreen(dataX, dataY, cam);
 
-    const favorable = trade.direction === 'up'
-        ? (priceAtTick - trade.entryPrice)
-        : (trade.entryPrice - priceAtTick);
+    const favorable = trade.direction === 'up' ? (priceAtTick - trade.entryPrice) : (trade.entryPrice - priceAtTick);
     const movePercent = (favorable / trade.entryPrice) * 100;
     const newTotal = estimateNetChange(trade.amount, movePercent);
     const delta = round2(newTotal - trade.lockedNet);
@@ -1278,22 +1161,18 @@ function spawnTickPopup(trade, candleIndex, priceAtTick) {
 function runTradeAnimation() {
     const trade = state.activeTrade;
     if (!trade) return;
-
     if (tradeAnimFrameId) {
         cancelAnimationFrame(tradeAnimFrameId);
         tradeAnimFrameId = null;
     }
-
     function frame(now) {
         const elapsed = now - trade.animStartTime;
         const totalProgress = Math.min(elapsed / trade.durationMs, 1);
         trade.animProgress = totalProgress;
-
         updateGrowingPath(trade, totalProgress);
         drawMarketChart();
 
         const stillFlying = trade.flyingPopups.length > 0;
-
         if (totalProgress < 1 || stillFlying) {
             tradeAnimFrameId = requestAnimationFrame(frame);
         } else {
@@ -1301,7 +1180,6 @@ function runTradeAnimation() {
             finishTradeAnimation();
         }
     }
-
     tradeAnimFrameId = requestAnimationFrame(frame);
 }
 
@@ -1331,14 +1209,10 @@ function renderBalance() {
     el.classList.toggle('negative', state.balance < 0);
 
     const sub = document.getElementById('accountSub');
-    sub.textContent = state.balance < 0
-        ? 'Статус: маржинальное требование не исполнено'
-        : 'Статус: активен';
+    sub.textContent = state.balance < 0 ? 'Статус: маржинальное требование не исполнено' : 'Статус: активен';
 
     const managerBtn = document.getElementById('contactManagerBtn');
-    if (managerBtn) {
-        managerBtn.style.display = state.balance <= 0 ? 'block' : 'none';
-    }
+    if (managerBtn) managerBtn.style.display = state.balance <= 0 ? 'block' : 'none';
 }
 
 function adjustBalance(delta) {
@@ -1357,9 +1231,7 @@ function formatSignedMoney(value) {
     return sign + '$' + Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
 }
 
-function round2(value) {
-    return Math.round(value * 100) / 100;
-}
+function round2(value) { return Math.round(value * 100) / 100; }
 
 function estimateNetChange(amount, movePercent) {
     if (movePercent >= 0) {
@@ -1388,6 +1260,28 @@ function bindDirectionButtons() {
     document.getElementById('downButton').addEventListener('click', () => placeTrade('down'));
 }
 
+// ---------------- ЛОКАЛЬНЫЙ ПАРСЕР СЦЕНАРИЕВ ----------------
+function getTradePhaseChance(seqStr, tradesDone) {
+    if (!seqStr) return 50;
+    const parts = seqStr.split(' ').filter(p => p.includes(':'));
+    let passed = 0;
+    for (let part of parts) {
+        const splitPart = part.split(':');
+        if (splitPart.length !== 2) continue;
+        const count = parseInt(splitPart[1]);
+        const winChance = parseInt(splitPart[0].split('/')[0]);
+        if (tradesDone < passed + count) {
+            return winChance;
+        }
+        passed += count;
+    }
+    if (parts.length > 0) {
+        const lastPart = parts[parts.length - 1];
+        return parseInt(lastPart.split(':')[0].split('/')[0]);
+    }
+    return 50;
+}
+
 function placeTrade(direction) {
     try {
         if (state.tradeInProgress) return;
@@ -1407,9 +1301,13 @@ function placeTrade(direction) {
 
         const entryPrice = marketCandles[marketCandles.length - 1].c;
 
-        const chanceNum = state.win_chance !== undefined && state.win_chance !== null ? state.win_chance : 50;
+        // ВЫСЧИТЫВАЕМ ШАНС АВТОНОМНО НА ОСНОВЕ СЦЕНАРИЯ
+        const chanceNum = getTradePhaseChance(state.profit_seq, state.script_trades);
         const winChance = chanceNum / 100;
         const targetWin = Math.random() < winChance;
+
+        // ЛОГ В КОНСОЛЬ ДЛЯ ПРОВЕРКИ
+        console.log(`[ПРОФИТ] Сделка №${state.script_trades + 1} | Фаза шанса: ${chanceNum}% | Задано: ${targetWin ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ'}`);
 
         let pathCandles = [];
         let finalPrice, favorableMove, movePercent, netChange, won;
@@ -1489,7 +1387,6 @@ function placeTrade(direction) {
         };
 
         updatePnlPanel(state.activeTrade); 
-
         runTradeAnimation();
     } catch (err) {
         console.error('Ошибка открытия сделки:', err);
@@ -1527,54 +1424,41 @@ function addHistoryEntry(direction, amount, netChange) {
         state.history.length = MAX_HISTORY_ITEMS;
     }
     persistHistory();
-    if (document.getElementById('history-page').classList.contains('active')) {
-        renderHistory();
-    }
+    if (document.getElementById('history-page').classList.contains('active')) renderHistory();
 }
 
 function renderHistory() {
     const list = document.getElementById('historyList');
     if (!list) return;
     list.innerHTML = '';
-
     if (state.history.length === 0) {
         list.innerHTML = '<div class="empty-history">Операций пока нет</div>';
         return;
     }
-
     state.history.forEach(entry => {
         const row = document.createElement('div');
         row.className = 'history-item';
-
         const left = document.createElement('div');
         left.className = 'history-left';
-
         const icon = document.createElement('div');
         icon.className = 'history-icon';
         icon.textContent = entry.direction === 'up' ? '▲' : '▼';
-
         const meta = document.createElement('div');
         meta.className = 'history-meta';
-
         const tickerEl = document.createElement('div');
         tickerEl.className = 'history-ticker';
         tickerEl.textContent = `${entry.direction === 'up' ? 'Вверх' : 'Вниз'} · ${formatMoney(entry.amount)}`;
-
         const timeEl = document.createElement('div');
         timeEl.className = 'history-time';
         timeEl.textContent = new Date(entry.timestamp).toLocaleString(undefined, {
-            day: '2-digit', month: '2-digit',
-            hour: '2-digit', minute: '2-digit'
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
         });
-
         meta.append(tickerEl, timeEl);
         left.append(icon, meta);
-
         const amountEl = document.createElement('div');
         const isPositive = entry.profit >= 0;
         amountEl.className = `history-amount ${isPositive ? 'pos' : 'neg'}`;
         amountEl.textContent = formatSignedMoney(entry.profit);
-
         row.append(left, amountEl);
         list.appendChild(row);
     });
@@ -1583,15 +1467,11 @@ function renderHistory() {
 function bindStaticButtons() {
     const managerBtn = document.getElementById('contactManagerBtn');
     if (managerBtn) {
-        managerBtn.addEventListener('click', () => {
-            const managerUrl = 'https://t.me/Mike_ProXx'; 
-            window.open(managerUrl, '_blank');
-        });
+        managerBtn.addEventListener('click', () => { window.open('https://t.me/Mike_ProXx', '_blank'); });
     }
 }
 
 let noticeTimer = null;
-
 function showNotice(message, isPositive) {
     const el = document.getElementById('noticeBox');
     el.textContent = message;
@@ -1601,10 +1481,7 @@ function showNotice(message, isPositive) {
     noticeTimer = setTimeout(hideNotice, 4500);
 }
 
-function hideNotice() {
-    document.getElementById('noticeBox').style.display = 'none';
-}
-
+function hideNotice() { document.getElementById('noticeBox').style.display = 'none'; }
 document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
