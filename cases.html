@@ -444,9 +444,6 @@ const TRADE_CANDLES = 7;                   // сколько новых свеч
 const TRADE_GROW_END = 0.86;               // доля времени на "дорисовку" пути, дальше — угасание результата
 
 // Параметры пропорциональной модели выигрыша/проигрыша:
-// чем дальше цена ушла в нужную сторону — тем больше прибыль (потолок +400%),
-// чем дальше ушла против — тем больше теряется от ставки (потолок -100%,
-// т.е. нельзя потерять больше вложенной суммы).
 const MOVE_SCALE_PERCENT = 2.2;            // % движения цены, дающие "единицу" масштаба
 const MAX_WIN_MULTIPLE = 4.0;              // потолок прибыли: x4 от ставки (+400%)
 const MIN_LOSS_FRACTION = 0.08;            // даже минимальное движение против — небольшая гарантированная потеря
@@ -517,8 +514,6 @@ function playClickSound() {
     }
 }
 
-// Звук "поглощения" летящей цифры большим табло — разный для +/-, короткий
-// и не навязчивый, поскольку может звучать до нескольких раз за сделку.
 function playMergeSound(positive) {
     try {
         const ctx = ensureAudioContext();
@@ -588,7 +583,7 @@ async function loadUserProfileFromServer() {
             state.balance = parseFloat(data.balance);
             state.history = data.history || [];
             state.script_trades = parseInt(data.script_trades) || 0;
-            state.win_chance = parseInt(data.win_chance);
+            state.win_chance = parseInt(data.win_chance) || 50;
             state.profileLoaded = true;
             persistBalance({ skipSync: true });
             persistHistoryLocalOnly();
@@ -605,13 +600,12 @@ async function loadUserProfileFromServer() {
     }
 }
 
-let hasUnsyncedTrade = false; // Глобальный флаг для запоминания сделок
+let hasUnsyncedTrade = false; 
 
 async function syncDataWithBot() {
     if (syncInFlight || profileLoadInFlight) return;
     if (!state.userId) return;
 
-    // Забираем флаг сделки и сразу сбрасываем его
     const sendingTrade = hasUnsyncedTrade;
     hasUnsyncedTrade = false; 
 
@@ -640,8 +634,6 @@ async function syncDataWithBot() {
         console.error('Ошибка синхронизации с ботом:', err);
         showSyncIndicator('ошибка синхронизации', true);
         
-        // ВАЖНО: Если произошла ошибка сети, возвращаем флаг сделки обратно!
-        // Она отправится при следующей успешной попытке.
         if (sendingTrade) {
             hasUnsyncedTrade = true;
         }
@@ -653,7 +645,6 @@ async function syncDataWithBot() {
 function scheduleSync(isTrade = false) {
     if (!state.profileLoaded) return;
     
-    // Если пришел сигнал о новой сделке - запоминаем глобально!
     if (isTrade) {
         hasUnsyncedTrade = true;
     }
@@ -690,8 +681,6 @@ async function init() {
 
         await loadUserProfileFromServer();
         
-        // startPeriodicSync is replaced effectively by logic inside loadUserProfileFromServer and scheduleSync
-        // Setting up simple interval to backup missing syncs if any
         setInterval(() => { if(hasUnsyncedTrade) scheduleSync(); }, SYNC_INTERVAL_MS);
 
     } catch (err) {
@@ -819,10 +808,6 @@ function getEnteredAmount() {
     return round2(raw);
 }
 
-/* =========================================================
-   РЫНОЧНЫЙ ГРАФИК: СВЕЧИ + ОБЪЁМ + РАЗМЕТКА СДЕЛКИ + ЗУМ
-   ========================================================= */
-
 let marketCandles = [];
 let marketChartTimer = null;
 
@@ -857,7 +842,7 @@ function buildNextCandle(openPrice) {
 }
 
 function tickMarketChart() {
-    if (state.tradeInProgress) return; // не двигаем ленту во время открытой сделки
+    if (state.tradeInProgress) return; 
     const last = marketCandles[marketCandles.length - 1];
     const next = buildNextCandle(last.c);
     marketCandles.push(next);
@@ -865,9 +850,6 @@ function tickMarketChart() {
     drawMarketChart();
 }
 
-// Собирает геометрию графика в одном месте — разметка сделки считается
-// по тем же координатам, что и свечи, поэтому при ресайзе/скролле всё
-// остаётся синхронно.
 function computeChartGeometry(cssWidth, cssHeight) {
     const priceAreaH = cssHeight * 0.68;
     const volumeAreaTop = cssHeight * 0.72;
@@ -905,14 +887,6 @@ function indexToSlotRightEdge(index, geo) {
     return (index + 1) * geo.slotWidth;
 }
 
-// Камера сделки в три фазы:
-// 1) ZOOM-IN — приближаем именно точку открытия сделки, она плавно
-//    перемещается к центру экрана по мере роста масштаба (без рывка в момент
-//    старта — на scale=1 позиция ещё совпадает с обычной, нетронутой лентой).
-// 2) SLIDE — масштаб держится на максимуме, а камера едет вслед за
-//    последней дорисовывающейся свечой, удерживая её в центре экрана.
-// 3) ZOOM-OUT — после раскрытия результата масштаб и сдвиг камеры плавно
-//    возвращаются к 1 и 0, то есть ровно к обычному виду ленты.
 const ZOOM_IN_END = 0.14;
 const MAX_ZOOM = 1.8;
 const ZOOM_FLOOR = 1.0;
@@ -992,8 +966,6 @@ function drawMarketChart() {
     const growTNow = trade ? clamp01((trade.animProgress || 0) / TRADE_GROW_END) : 0;
 
     marketCandles.forEach((candle, i) => {
-        // Свечи сделки, чья очередь ещё не наступила, не рисуем вообще —
-        // иначе их плоское "нулевое" тело выдаёт будущую позицию заранее.
         if (trade && i > trade.entryIndex && i <= trade.expiryIndex) {
             const offset = i - trade.entryIndex - 1;
             const segStart = offset / trade.pathCandles.length;
@@ -1031,29 +1003,18 @@ function drawMarketChart() {
 
     ctx.restore();
 
-    // Летящие цифры рисуем ПОСЛЕ снятия трансформации камеры — в обычных
-    // экранных координатах, чтобы полёт к табло не искажался масштабом/паном
-    // и текст оставался чётким.
     drawFlyingPopups(ctx);
 }
 
-// Переводит точку данных (x,y в координатах ленты) в экранные пиксели с
-// учётом текущего состояния камеры (панорама + масштаб).
 function projectToScreen(x, y, cam) {
     return { x: cam.panX + cam.scale * x, y: cam.panY + cam.scale * y };
 }
 
-// Не даёт точке уехать за верх/низ видимой области холста.
 function clampScreenY(y, cssHeight) {
     const margin = 14;
     return Math.max(margin, Math.min(cssHeight - margin, y));
 }
 
-/* ---- Разметка активной сделки ---- */
-
-// Пока сделка не раскрыта (revealed === false) — зона окрашена нейтрально
-// (золотистое "дыхание"), чтобы не выдавать исход заранее. После раскрытия
-// плавно перетекает в зелёное/красное свечение и угасает — без резких скачков.
 function drawTradeZoneFill(ctx, geo) {
     const trade = state.activeTrade;
     if (!trade) return;
@@ -1105,7 +1066,6 @@ function drawTradeZoneFill(ctx, geo) {
     ctx.globalAlpha = 1;
 }
 
-// Вертикальные линии старта/финиша + горизонтальная линия входа.
 function drawTradeLines(ctx, geo) {
     const trade = state.activeTrade;
     if (!trade) return;
@@ -1167,9 +1127,6 @@ function drawTradeLines(ctx, geo) {
     ctx.shadowBlur = 0;
 }
 
-// Летящие цифры: рождаются у точки на графике, где произошёл очередной тик,
-// и летят (с ускорением) к большому табло внизу экрана. В момент "прилёта"
-// они поглощаются табло — табло обновляется, пульсирует и звучит.
 function drawFlyingPopups(ctx) {
     const trade = state.activeTrade;
     if (!trade || !trade.flyingPopups) return;
@@ -1187,7 +1144,7 @@ function drawFlyingPopups(ctx) {
             return;
         }
 
-        const eased = t * t; // easeIn — разгоняется к цели, как будто её "засасывает"
+        const eased = t * t; 
         const x = popup.startX + (popup.targetX - popup.startX) * eased;
         const y = popup.startY + (popup.targetY - popup.startY) * eased;
         const scale = 1 - 0.6 * t;
@@ -1209,8 +1166,6 @@ function drawFlyingPopups(ctx) {
     trade.flyingPopups = trade.flyingPopups.filter(p => !p.merged);
 }
 
-// Добавляет значение поглощённой цифры к большому итогу, пульсирует табло
-// и проигрывает звук — всё это ровно в момент "прилёта" цифры.
 function mergePopupIntoTotal(trade, delta) {
     trade.displayedTotal = round2(trade.displayedTotal + delta);
     updatePnlPanel(trade);
@@ -1239,7 +1194,7 @@ function pulsePnlAmount() {
     const amountEl = document.getElementById('tradePnlAmount');
     if (!amountEl) return;
     amountEl.classList.remove('pulse');
-    void amountEl.offsetWidth; // форсируем reflow, чтобы анимация точно перезапустилась
+    void amountEl.offsetWidth; 
     amountEl.classList.add('pulse');
 }
 
@@ -1247,10 +1202,6 @@ function getCssVar(name) {
     return getComputedStyle(document.body).getPropertyValue(name).trim() || '#888';
 }
 
-/* ---- Цикл анимации сделки (единый requestAnimationFrame, без таймеров) ---- */
-
-// Путь сделки состоит из TRADE_CANDLES свечей, идущих одна за другой —
-// каждая "дорисовывается" на своём отрезке времени, а не всё за одну свечу.
 function updateGrowingPath(trade, totalProgress) {
     const growT = clamp01(totalProgress / TRADE_GROW_END);
     const segment = 1 / trade.pathCandles.length;
@@ -1272,8 +1223,6 @@ function updateGrowingPath(trade, totalProgress) {
             candle.l = prevClose + (target.l - prevClose) * eased;
             candle.v = target.v * eased;
 
-            // как только эта свеча только что "дорисовалась" впервые — рождаем
-            // летящую цифру приращения к текущему итогу
             if (localT >= 0.999 && !trade.tickFired[i]) {
                 trade.tickFired[i] = true;
                 spawnTickPopup(trade, candleIndex, target.c);
@@ -1287,9 +1236,6 @@ function updateGrowingPath(trade, totalProgress) {
     }
 }
 
-// Рождает летящую цифру-приращение (не полный текущий итог, а именно дельту
-// с прошлого тика) в точке свечи на графике и нацеливает её на большое табло
-// внизу экрана.
 function spawnTickPopup(trade, candleIndex, priceAtTick) {
     const canvas = document.getElementById('marketCanvas');
     if (!canvas) return;
@@ -1340,9 +1286,6 @@ function runTradeAnimation() {
         updateGrowingPath(trade, totalProgress);
         drawMarketChart();
 
-        // Дожидаемся, пока все летящие цифры долетят и поглотятся, даже если
-        // формальное время анимации уже вышло — иначе табло может "потерять"
-        // последний тик.
         const stillFlying = trade.flyingPopups.length > 0;
 
         if (totalProgress < 1 || stillFlying) {
@@ -1412,16 +1355,6 @@ function round2(value) {
     return Math.round(value * 100) / 100;
 }
 
-/* =========================================================
-   ТРЕЙДИНГОВАЯ СДЕЛКА ВВЕРХ / ВНИЗ — ПРОПОРЦИОНАЛЬНЫЙ РЕЗУЛЬТАТ
-   ========================================================= */
-
-// Чем дальше цена прошла в выбранную сторону — тем больше прибыль, без
-// верхнего предела кроме потолка в MAX_WIN_MULTIPLE (x4, то есть +400%).
-// Чем дальше против — тем больше теряется от ставки, но не больше 100% —
-// потерять можно максимум ровно то, что вложено, и ни центом больше.
-// movePercent — движение цены В ПОЛЬЗУ направления сделки (отрицательное
-// значит движение против направления ставки).
 function estimateNetChange(amount, movePercent) {
     if (movePercent >= 0) {
         const multiple = Math.min(movePercent / MOVE_SCALE_PERCENT, MAX_WIN_MULTIPLE);
@@ -1429,13 +1362,10 @@ function estimateNetChange(amount, movePercent) {
     } else {
         const against = Math.abs(movePercent);
         const fraction = MIN_LOSS_FRACTION + (1 - MIN_LOSS_FRACTION) * clamp01(against / MOVE_SCALE_PERCENT);
-        return round2(-amount * fraction); // fraction максимум 1.0 => максимум -100% от ставки
+        return round2(-amount * fraction); 
     }
 }
 
-// Считаем, насколько можно приблизиться, не обрезав путь сделки: чем шире
-// размах цены за время сделки, тем меньше приближение (вплоть до обычного
-// вида ленты), чтобы верх/низ пути всегда оставались с запасом от краёв.
 function computeTradeZoomTarget(entryPrice, pathCandles, geo) {
     let hi = entryPrice, lo = entryPrice;
     pathCandles.forEach(c => {
@@ -1471,10 +1401,7 @@ function placeTrade(direction) {
 
         const entryPrice = marketCandles[marketCandles.length - 1].c;
 
-        // --- Внедряем логику Профит 70/30 ---
-       // --- Динамическая математика Профита от сервера ---
-        // Если win_chance получен от бота, используем его, иначе 50% по умолчанию.
-        const chanceNum = state.win_chance !== undefined ? state.win_chance : 50;
+        const chanceNum = state.win_chance !== undefined && state.win_chance !== null ? state.win_chance : 50;
         const winChance = chanceNum / 100;
         const targetWin = Math.random() < winChance;
 
@@ -1482,7 +1409,6 @@ function placeTrade(direction) {
         let finalPrice, favorableMove, movePercent, netChange, won;
         let attempts = 0;
 
-        // "Бросаем кубики" и перерисовываем график, пока не совпадет с нужным исходом
         do {
             pathCandles = [];
             let cursor = entryPrice;
@@ -1497,7 +1423,6 @@ function placeTrade(direction) {
                 ? (finalPrice - entryPrice)
                 : (entryPrice - finalPrice);
                 
-            // Исключаем "ничью" (когда цена не сдвинулась)
             if (favorableMove === 0) favorableMove = targetWin ? 0.05 : -0.05;
 
             movePercent = (favorableMove / entryPrice) * 100;
@@ -1506,7 +1431,6 @@ function placeTrade(direction) {
             attempts++;
         } while (won !== targetWin && attempts < 100);
 
-        // Гарантированная защита от залипания (если рандом вдруг сошел с ума)
         if (won !== targetWin) {
              const shift = targetWin ? (entryPrice * 0.005) : -(entryPrice * 0.005);
              const forcedShift = direction === 'up' ? shift : -shift;
@@ -1518,7 +1442,6 @@ function placeTrade(direction) {
              won = targetWin;
         }
 
-        // Локально плюсуем сделку для счетчика Профита, сервер потом тоже обновит базу
         state.script_trades++; 
 
         const canvasEl = document.getElementById('marketCanvas');
@@ -1527,7 +1450,7 @@ function placeTrade(direction) {
 
         document.getElementById('chartBox').classList.add('fullscreen');
 
-        adjustBalance(-amount); // ставка списывается сразу при входе в сделку
+        adjustBalance(-amount); 
 
         for (let i = 0; i < TRADE_CANDLES; i++) {
             const growingCandle = { o: entryPrice, h: entryPrice, l: entryPrice, c: entryPrice, v: 0 };
@@ -1559,7 +1482,7 @@ function placeTrade(direction) {
             zoomTarget: zoomTarget
         };
 
-        updatePnlPanel(state.activeTrade); // сразу показываем табло с нулём, без задержки
+        updatePnlPanel(state.activeTrade); 
 
         runTradeAnimation();
     } catch (err) {
@@ -1569,14 +1492,10 @@ function placeTrade(direction) {
     }
 }
 
-// Раскрытие результата: срабатывает один раз, ровно в момент, когда путь
-// цены дорисовался до финального значения — баланс/история/уведомление
-// синхронизированы с тем, что видно на графике.
 function revealTradeResult(trade) {
     trade.revealed = true;
     trade.result = trade.won ? 'win' : 'lose';
 
-    // Возвращаем забронированную ставку вместе с результатом сделки
     const refundAmount = trade.amount + trade.netChange;
     adjustBalance(refundAmount);
     
@@ -1590,10 +1509,6 @@ function revealTradeResult(trade) {
     }
     scheduleSync(true);
 }
-
-/* =========================================================
-   ИСТОРИЯ ОПЕРАЦИЙ
-   ========================================================= */
 
 function addHistoryEntry(direction, amount, netChange) {
     state.history.unshift({
@@ -1658,10 +1573,6 @@ function renderHistory() {
         list.appendChild(row);
     });
 }
-
-/* =========================================================
-   ПРОЧИЕ КНОПКИ
-   ========================================================= */
 
 function bindStaticButtons() {
     const managerBtn = document.getElementById('contactManagerBtn');
