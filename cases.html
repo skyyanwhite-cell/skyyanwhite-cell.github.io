@@ -521,7 +521,6 @@ async function init() {
         if (state.tg) { 
             state.tg.enableClosingConfirmation(); 
             state.tg.expand(); 
-            try { if(state.tg.requestFullscreen) state.tg.requestFullscreen(); } catch(e){}
             state.tg.ready(); 
         }
         state.userId = (state.tg && state.tg.initDataUnsafe && state.tg.initDataUnsafe.user) ? state.tg.initDataUnsafe.user.id : 99999;
