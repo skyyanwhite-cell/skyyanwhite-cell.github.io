@@ -26,47 +26,63 @@
         color: var(--text);
         background: var(--bg);
         user-select: none;
+        display: flex; flex-direction: column; min-height: 100vh;
     }
-    .container{ max-width: 400px; margin: 0 auto; }
+    .container{ max-width: 400px; margin: 0 auto; width: 100%; flex: 1; display: flex; flex-direction: column; }
 
-    .ticker-wrap{
-        overflow: hidden; background: var(--surface); border: 1px solid var(--border);
-        border-radius: 8px; margin-bottom: 12px; padding: 8px 0;
-    }
-    .ticker-track{ display: flex; white-space: nowrap; animation: scroll-left 22s linear infinite; }
-    .ticker-item{ font-family: var(--mono); font-size: 12px; padding: 0 16px; border-right: 1px solid var(--border); color: var(--text-dim); letter-spacing: 0.2px; }
-    .ticker-item b{ color: var(--text); font-weight: 600; }
-    .t-up{ color: var(--green); }
-    .t-down{ color: var(--red); }
-    @keyframes scroll-left{ 0%{ transform: translateX(0); } 100%{ transform: translateX(-50%); } }
-
-    .tabs{ display: flex; gap: 8px; margin-bottom: 14px; }
+    .tabs{ display: flex; gap: 8px; margin-bottom: 14px; flex-shrink: 0;}
     .tab-btn{
         flex: 1; background: var(--surface); color: var(--text-dim); border: 1px solid var(--border);
         padding: 11px 6px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px;
         letter-spacing: 0.2px; transition: all .15s ease;
     }
     .tab-btn.active{ background: linear-gradient(135deg, var(--gold), #A9853F); color: #14110A; border-color: transparent; }
-    .page{ display: none; }
+    .page{ display: none; flex: 1; }
     .page.active{ display: block; }
 
+    /* Окно баланса с кнопками */
     .account-card{
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
         background: linear-gradient(160deg, var(--surface-2), var(--surface)); border: 1px solid var(--border);
-        padding: 18px 16px; border-radius: 14px; margin-bottom: 14px; position: relative; overflow: hidden;
+        padding: 12px 14px; border-radius: 14px; margin-bottom: 10px; position: relative; overflow: hidden; flex-shrink: 0;
     }
     .account-card::before{
         content: ""; position: absolute; top: -30%; right: -20%; width: 160px; height: 160px;
-        background: radial-gradient(circle, rgba(201,169,97,0.15), transparent 70%);
+        background: radial-gradient(circle, rgba(201,169,97,0.15), transparent 70%); z-index: 1;
     }
-    .account-label{ font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 6px; }
-    .account-amount{ font-family: var(--mono); font-size: 30px; font-weight: 700; color: var(--gold-bright); letter-spacing: 0.5px; }
+    .account-left { flex: 1; min-width: 0; z-index: 2; }
+    .account-right { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; z-index: 2; width: 105px; }
+    
+    .account-label{ font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 4px; }
+    .account-amount{ font-family: var(--mono); font-size: 26px; font-weight: 700; color: var(--gold-bright); letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .account-amount.negative{ color: var(--red); }
-    .account-sub{ font-size: 11px; color: var(--text-dim); margin-top: 4px; }
-    .manager-button {
-        display: none; margin: 12px auto 0 auto; background: #2ea6ff; color: #fff; border: none;
-        padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s;
+    .account-sub{ font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+    
+    .action-btn {
+        background: rgba(201,169,97,0.15); border: 1px solid var(--gold); color: var(--gold-bright);
+        padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; font-family: var(--mono);
+        cursor: pointer; transition: all 0.2s; text-align: center;
     }
-    .manager-button:hover { background: #1a90e0; }
+    .action-btn:active { background: rgba(201,169,97,0.3); transform: scale(0.95); }
+
+    /* Полоса вагера */
+    .wager-wrap {
+        background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+        padding: 10px 14px; margin-bottom: 14px; flex-shrink: 0;
+    }
+    .wager-header {
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 10px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px;
+        letter-spacing: 0.5px; font-weight: 600;
+    }
+    .wager-val { font-family: var(--mono); color: var(--text); font-size: 11px; }
+    .wager-track {
+        height: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; overflow: hidden; position: relative;
+    }
+    .wager-fill {
+        height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-bright));
+        width: 0%; transition: width 0.4s ease; border-radius: 4px; box-shadow: 0 0 8px rgba(201,169,97,0.5);
+    }
 
     .amount-box{
         background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
@@ -81,7 +97,6 @@
         transition: border-color 0.2s ease;
     }
     .amount-input:focus{ border-color: var(--gold); }
-    
     .quick-amounts{ display: flex; gap: 4px; margin-top: 10px; flex-wrap: wrap; }
     .quick-chip{
         flex: 1; min-width: 45px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
@@ -101,7 +116,6 @@
     .direction-btn.down{ background: linear-gradient(135deg, #F26065, var(--red)); color: #1A0607; }
     .direction-btn:disabled{ opacity: 0.4; cursor: not-allowed; transform: none; }
 
-    /* СТИЛИ СЕЛЕКТОРА АКТИВОВ */
     .chart-box{
         background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
         padding: 10px 8px; margin-bottom: 12px; overflow: hidden; position: relative; z-index: 1; transition: all .38s cubic-bezier(.22,.9,.3,1);
@@ -157,7 +171,6 @@
     .trade-pnl-amount.pulse{ animation: pnlPulse .32s ease; }
     @keyframes pnlPulse{ 0%{ transform: scale(1); } 35%{ transform: scale(1.18); } 100%{ transform: scale(1); } }
 
-    /* ИСТОРИЯ И СВЕЧЕНИЯ */
     .history-page .history-list{ display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
     
     .history-item{ 
@@ -193,12 +206,16 @@
     .notice{ border: 1px solid var(--border); padding: 11px; border-radius: 9px; margin-top: 14px; text-align: center; font-weight: 600; font-size: 13px; display: none; }
     .notice.win{ color: var(--green); background: rgba(31,174,100,0.08); }
     .notice.lose{ color: var(--red); background: rgba(229,72,77,0.08); }
+
+    /* Бегущая строка в самом низу */
+    .ticker-wrap{
+        overflow: hidden; background: var(--surface); border: 1px solid var(--border);
+        border-radius: 8px; margin-top: auto; padding: 8px 0; flex-shrink: 0;
+    }
 </style>
 </head>
 <body>
 <div class="container">
-
-    <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
 
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('trade-page', event)">📊 Торговля</button>
@@ -206,10 +223,25 @@
     </div>
 
     <div class="account-card">
-        <div class="account-label">Торговый счёт</div>
-        <div class="account-amount" id="globalBalance">0</div>
-        <div class="account-sub" id="accountSub">Статус: активен</div>
-        <button class="manager-button" id="contactManagerBtn">Написать менеджеру для пополнения</button>
+        <div class="account-left">
+            <div class="account-label">Торговый счёт</div>
+            <div class="account-amount" id="globalBalance">0</div>
+            <div class="account-sub" id="accountSub">Статус: активен</div>
+        </div>
+        <div class="account-right">
+            <button class="action-btn" onclick="triggerBotAction('deposit')">💳 Пополнить</button>
+            <button class="action-btn" onclick="triggerBotAction('withdraw')">🏦 Вывод</button>
+        </div>
+    </div>
+
+    <div class="wager-wrap">
+        <div class="wager-header">
+            <span>Оборот (Вагер)</span>
+            <span class="wager-val" id="wagerText">$0 / $0 (0%)</span>
+        </div>
+        <div class="wager-track">
+            <div class="wager-fill" id="wagerFill"></div>
+        </div>
     </div>
 
     <div id="trade-page" class="page active">
@@ -265,6 +297,8 @@
         <div class="history-list" id="historyList"></div>
     </div>
 
+    <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
+
 </div>
 
 <script>
@@ -300,6 +334,8 @@ const state = {
     history: [],
     realBalance: 0,
     bonusBalance: 0,
+    turnover: 0,
+    requiredTrades: 0,
     currencySymbol: "$",
     tradeInProgress: false,
     activeTrade: null,
@@ -371,6 +407,19 @@ let hasUnsyncedTrade = false;
 
 function getInitData() { return state.tg && state.tg.initData ? state.tg.initData : ''; }
 
+// ФУНКЦИЯ ДЛЯ КНОПОК ПОПОЛНИТЬ И ВЫВОД (вызов бота через API)
+async function triggerBotAction(action) {
+    if (!state.userId) return;
+    try {
+        await fetch(`${BASE_URL}/api/action`, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+            body: JSON.stringify({ user_id: state.userId, action: action })
+        });
+    } catch (e) { console.log(e); }
+    if (state.tg) state.tg.close();
+}
+
 let pollingTimer = null;
 function startBackgroundPolling() {
     pollingTimer = setInterval(async () => {
@@ -387,11 +436,16 @@ function startBackgroundPolling() {
             if (!response.ok) return;
             const data = await response.json();
             if (data.status === 'success') {
+                state.turnover = data.turnover !== undefined ? parseFloat(data.turnover) : state.turnover;
+                state.requiredTrades = data.required_trades !== undefined ? parseFloat(data.required_trades) : state.requiredTrades;
+                
                 const sReal = parseFloat(data.real_balance);
                 const sBonus = parseFloat(data.bonus_balance);
                 if (Math.abs(state.realBalance - sReal) > 0.01 || Math.abs(state.bonusBalance - sBonus) > 0.01) {
                     state.realBalance = sReal; state.bonusBalance = sBonus;
-                    renderBalance(); persistBalance({ skipSync: true });
+                    renderBalance(); renderWager(); persistBalance({ skipSync: true });
+                } else {
+                    renderWager(); // На всякий случай обновляем вагер
                 }
             }
         } catch (err) {}
@@ -408,9 +462,12 @@ async function loadUserProfileFromServer() {
         if (data.status === 'success') {
             state.realBalance = parseFloat(data.real_balance) || 0;
             state.bonusBalance = parseFloat(data.bonus_balance) || 0;
+            state.turnover = data.turnover !== undefined ? parseFloat(data.turnover) : 0;
+            state.requiredTrades = data.required_trades !== undefined ? parseFloat(data.required_trades) : 0;
             state.profileLoaded = true;
             persistBalance({ skipSync: true });
             renderBalance();
+            renderWager();
         }
     } catch (err) { state.profileLoaded = true; }
     finally { profileLoadInFlight = false; }
@@ -447,8 +504,8 @@ async function init() {
         loadState(); 
         document.getElementById('currentAssetLabel').textContent = state.currentAsset;
         
-        renderBalance(); renderHistory(); buildTicker(); bindAmountInput(); bindQuickAmounts();
-        bindDirectionButtons(); bindStaticButtons(); 
+        renderBalance(); renderWager(); renderHistory(); buildTicker(); bindAmountInput(); bindQuickAmounts();
+        bindDirectionButtons();
         
         initMarketChart(ASSET_PRICES[state.currentAsset]); 
         setInterval(refreshTicker, 4000);
@@ -564,9 +621,9 @@ function recalculateAmountFromPercent() {
     let amt = 0;
     const total = getTotalBalance();
     if (state.activePercent === 'MAX') {
-        amt = Math.floor(total * 100) / 100;
+        amt = Math.floor(total * 100 + 0.0001) / 100;
     } else {
-        amt = Math.floor((total * (parseInt(state.activePercent) / 100)) * 100) / 100;
+        amt = Math.floor((total * (parseInt(state.activePercent) / 100)) * 100 + 0.0001) / 100;
     }
     document.getElementById('amountInput').value = amt;
     handleAmountChange();
@@ -604,7 +661,7 @@ function getEnteredAmount() {
     val = val.replace(',', '.');
     const raw = parseFloat(val);
     if (isNaN(raw) || raw <= 0) return 0;
-    return Math.floor(raw * 100) / 100;
+    return Math.floor(raw * 100 + 0.0001) / 100;
 }
 
 let marketCandles = []; let marketChartTimer = null;
@@ -901,8 +958,23 @@ function renderBalance() {
     el.textContent = formatMoney(getTotalBalance());
     el.classList.toggle('negative', getTotalBalance() < 0);
     document.getElementById('accountSub').textContent = getTotalBalance() < 0 ? 'Статус: маржинальное требование не исполнено' : 'Статус: активен';
-    const managerBtn = document.getElementById('contactManagerBtn');
-    if (managerBtn) managerBtn.style.display = getTotalBalance() <= 0 ? 'block' : 'none';
+}
+
+function renderWager() {
+    const fill = document.getElementById('wagerFill');
+    const txt = document.getElementById('wagerText');
+    if (!fill || !txt) return;
+
+    let pct = 0;
+    if (state.requiredTrades > 0) {
+        pct = (state.turnover / state.requiredTrades) * 100;
+    } else if (state.turnover > 0) {
+        pct = 100;
+    }
+    if (pct > 100) pct = 100;
+
+    fill.style.width = pct + '%';
+    txt.textContent = `${formatMoney(state.turnover)} / ${formatMoney(state.requiredTrades)} (${pct.toFixed(1)}%)`;
 }
 
 function formatMoney(value) { return (value < 0 ? '-' : '') + state.currencySymbol + Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 }); }
@@ -954,6 +1026,10 @@ async function placeTrade(direction) {
         if (amount <= tempReal) tempReal -= amount;
         else { tempBonus = Math.max(0, tempBonus - (amount - tempReal)); tempReal = 0; }
         state.realBalance = tempReal; state.bonusBalance = tempBonus; renderBalance();
+
+        state.turnover = data.turnover !== undefined ? parseFloat(data.turnover) : state.turnover;
+        state.requiredTrades = data.required_trades !== undefined ? parseFloat(data.required_trades) : state.requiredTrades;
+        renderWager();
 
         const entryPrice = marketCandles[marketCandles.length - 1].c;
         let pathCandles = []; let finalPrice, favorableMove; let attempts = 0;
@@ -1087,11 +1163,6 @@ function renderHistory() {
         `;
         list.appendChild(row);
     });
-}
-
-function bindStaticButtons() {
-    const managerBtn = document.getElementById('contactManagerBtn');
-    if (managerBtn) managerBtn.addEventListener('click', () => { window.open('https://t.me/Mike_ProXx', '_blank'); });
 }
 
 let noticeTimer = null;
