@@ -32,7 +32,7 @@
 
     .ticker-wrap{
         overflow: hidden; background: var(--surface); border: 1px solid var(--border);
-        border-radius: 8px; margin-bottom: 12px; padding: 8px 0; flex-shrink: 0;
+        border-radius: 8px; margin-bottom: 14px; padding: 8px 0; flex-shrink: 0;
     }
     .ticker-track{ display: flex; white-space: nowrap; animation: scroll-left 22s linear infinite; }
     .ticker-item{ font-family: var(--mono); font-size: 12px; padding: 0 16px; border-right: 1px solid var(--border); color: var(--text-dim); letter-spacing: 0.2px; }
@@ -665,11 +665,11 @@ function selectAsset(sym) {
 function recalculateAmountFromPercent() {
     if (!state.activePercent) return;
     let amt = 0;
-    const total = getTotalBalance();
+    const total = Math.round(getTotalBalance() * 100) / 100;
     if (state.activePercent === 'MAX') {
-        amt = Math.floor(total * 100 + 0.0001) / 100;
+        amt = total;
     } else {
-        amt = Math.floor((total * (parseInt(state.activePercent) / 100)) * 100 + 0.0001) / 100;
+        amt = Math.round((total * (parseInt(state.activePercent) / 100)) * 100) / 100;
     }
     document.getElementById('amountInput').value = amt;
     handleAmountChange();
@@ -707,7 +707,7 @@ function getEnteredAmount() {
     val = val.replace(',', '.');
     const raw = parseFloat(val);
     if (isNaN(raw) || raw <= 0) return 0;
-    return Math.floor(raw * 100 + 0.0001) / 100;
+    return Math.round(raw * 100) / 100;
 }
 
 let marketCandles = []; let marketChartTimer = null;
@@ -736,12 +736,10 @@ function buildNextCandle(openPrice) {
 
 function tickMarketChart() {
     if (state.tradeInProgress) return; 
-    
     if (state.activeTrade) {
         state.activeTrade = null;
         document.getElementById('chartBox').classList.remove('fullscreen');
     }
-
     const last = marketCandles[marketCandles.length - 1]; const next = buildNextCandle(last.c);
     marketCandles.push(next); if (marketCandles.length > 34) marketCandles.shift();
     drawMarketChart();
