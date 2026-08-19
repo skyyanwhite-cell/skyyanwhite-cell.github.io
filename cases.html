@@ -128,10 +128,7 @@
         cursor: pointer;
         transition: background 0.2s;
     }
-
-    .manager-button:hover {
-        background: #1a90e0;
-    }
+    .manager-button:hover { background: #1a90e0; }
 
     .mentor-box{
         background: var(--surface);
@@ -181,13 +178,14 @@
         min-width: 0;
     }
     .amount-input:focus{ border-color: var(--gold); }
-    .quick-amounts{ display: flex; gap: 6px; margin-top: 10px; }
+    .quick-amounts{ display: flex; gap: 4px; margin-top: 10px; flex-wrap: wrap; }
     .quick-chip{
         flex: 1;
+        min-width: 45px;
         background: var(--surface-2);
         border: 1px solid var(--border);
         border-radius: 8px;
-        padding: 7px 4px;
+        padding: 7px 2px;
         text-align: center;
         font-family: var(--mono);
         font-size: 11.5px;
@@ -343,7 +341,7 @@
                 <input type="number" inputmode="decimal" class="amount-input" id="amountInput" placeholder="0" min="1" step="1">
             </div>
             <div class="quick-amounts" id="quickAmountsContainer">
-                <!-- Заполняется динамически через JS с правильной валютой -->
+                <!-- Заполняется динамически -->
             </div>
         </div>
 
@@ -407,11 +405,6 @@ const TRADE_MIN_MS = 9000;
 const TRADE_MAX_MS = 14000;
 const TRADE_CANDLES = 7;
 const TRADE_GROW_END = 0.86;
-
-const MOVE_SCALE_PERCENT = 2.2;
-const MAX_WIN_MULTIPLE = 4.0;
-const MIN_LOSS_FRACTION = 0.08;
-
 const FLIGHT_MS = 700;
 
 const state = {
@@ -425,11 +418,8 @@ const state = {
     tradeInProgress: false,
     activeTrade: null,
     script_trades: 0,
-    profit_seq: "70/30:20 20/80:1000",
-    win_chance: null
 };
 
-// Вычисляемое свойство для общего баланса
 function getTotalBalance() {
     return state.realBalance + state.bonusBalance;
 }
@@ -438,6 +428,7 @@ let tradeAnimFrameId = null;
 const CHART_MONO_FONT = "'SF Mono', 'Roboto Mono', Consolas, monospace";
 
 function clamp01(value) { return Math.max(0, Math.min(1, value)); }
+function round2(value) { return Math.round(value * 100) / 100; }
 
 let audioCtx = null;
 function ensureAudioContext() {
@@ -511,12 +502,6 @@ function getInitData() {
     return state.tg && state.tg.initData ? state.tg.initData : '';
 }
 
-function showSyncIndicator(text, isError) {
-    if (isError) console.warn('[sync]', text);
-    else console.log('[sync]', text);
-}
-
-// ----------------- ФОНОВЫЙ ОПРОС СЕРВЕРА -----------------
 let pollingTimer = null;
 function startBackgroundPolling() {
     pollingTimer = setInterval(async () => {
@@ -539,12 +524,7 @@ function startBackgroundPolling() {
 
             const data = await response.json();
             if (data.status === 'success') {
-                if (data.profit_seq) state.profit_seq = data.profit_seq;
-                
-                if (data.script_trades !== undefined) {
-                    state.script_trades = parseInt(data.script_trades) || 0;
-                }
-                
+                if (data.script_trades !== undefined) state.script_trades = parseInt(data.script_trades) || 0;
                 if (data.currency_symbol !== undefined) {
                     state.currencySymbol = data.currency_symbol;
                     updateCurrencyUI();
@@ -579,7 +559,6 @@ async function loadUserProfileFromServer() {
             state.bonusBalance = parseFloat(data.bonus_balance) || 0;
             state.history = data.history || [];
             state.script_trades = parseInt(data.script_trades) || 0;
-            if (data.profit_seq) state.profit_seq = data.profit_seq;
             if (data.currency_symbol !== undefined) state.currencySymbol = data.currency_symbol;
             
             state.profileLoaded = true;
@@ -603,7 +582,6 @@ async function syncDataWithBot() {
     const sendingTrade = hasUnsyncedTrade;
     hasUnsyncedTrade = false; 
 
-    // Отправляем РЕАЛЬНЫЙ и БОНУСНЫЙ баланс раздельно
     const payload = {
         user_id: state.userId,
         real_balance: state.realBalance,
@@ -615,22 +593,11 @@ async function syncDataWithBot() {
 
     syncInFlight = true;
     try {
-        const response = await fetch(`${BASE_URL}/api/sync`, {
+        await fetch(`${BASE_URL}/api/sync`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': 'true'
-            },
+            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
             body: JSON.stringify(payload)
         });
-
-        if (!response.ok) throw new Error('Сервер вернул статус ' + response.status);
-        
-        const data = await response.json();
-        if (data.status === 'success' && data.profit_seq) {
-            state.profit_seq = data.profit_seq;
-        }
-
     } catch (err) {
         if (sendingTrade) hasUnsyncedTrade = true;
     } finally {
@@ -648,18 +615,18 @@ function scheduleSync(isTrade = false) {
 function updateCurrencyUI() {
     document.getElementById('currencySymbolUi').textContent = state.currencySymbol;
     
-    // Перестраиваем кнопки быстрых сумм с учетом валюты
+    // Новые процентные кнопки
     const cCont = document.getElementById('quickAmountsContainer');
     if(cCont) {
         cCont.innerHTML = '';
-        [10, 25, 50, 100].forEach(val => {
+        [5, 10, 25, 50, 75, 'MAX'].forEach(val => {
             const d = document.createElement('div');
             d.className = 'quick-chip';
-            d.dataset.amount = val;
-            d.textContent = `${state.currencySymbol}${val}`;
+            d.dataset.percent = val;
+            d.textContent = val === 'MAX' ? 'MAX' : `${val}%`;
             cCont.appendChild(d);
         });
-        bindQuickAmounts(); // перебиндить эвенты
+        bindQuickAmounts();
     }
 }
 
@@ -692,12 +659,9 @@ async function init() {
         await loadUserProfileFromServer();
         
         startBackgroundPolling();
-        
         setInterval(() => { if(hasUnsyncedTrade) scheduleSync(); }, SYNC_INTERVAL_MS);
 
-    } catch (err) {
-        console.error('Ошибка инициализации:', err);
-    }
+    } catch (err) { console.error(err); }
 }
 
 function loadState() {
@@ -734,9 +698,7 @@ function persistHistoryLocalOnly() {
 function buildTicker() {
     const track = document.getElementById('tickerTrack');
     const items = [];
-    for (let i = 0; i < 2; i++) {
-        TICKER_SYMBOLS.forEach(sym => items.push(makeTickerItem(sym)));
-    }
+    for (let i = 0; i < 2; i++) { TICKER_SYMBOLS.forEach(sym => items.push(makeTickerItem(sym))); }
     track.innerHTML = items.join('');
 }
 
@@ -749,18 +711,13 @@ function makeTickerItem(symbol) {
     return `<span class="ticker-item"><b>${symbol}</b> ${arrow} <span class="${cls}">${sign}${change}%</span></span>`;
 }
 
-function refreshTicker() {
-    try { buildTicker(); } catch (err) {}
-}
+function refreshTicker() { try { buildTicker(); } catch (err) {} }
 
 let lastMentorIndex = -1;
 function scheduleMentorTip(immediate) {
     if (immediate) showRandomMentorTip();
     const delay = randomBetween(2 * 60 * 1000, 7 * 60 * 1000);
-    setTimeout(() => {
-        showRandomMentorTip();
-        scheduleMentorTip(false);
-    }, delay);
+    setTimeout(() => { showRandomMentorTip(); scheduleMentorTip(false); }, delay);
 }
 
 function showRandomMentorTip() {
@@ -784,10 +741,17 @@ function bindAmountInput() {
     input.addEventListener('input', handleAmountChange);
 }
 
+// Расчет суммы ставки от кнопок-процентов
 function bindQuickAmounts() {
     document.querySelectorAll('.quick-chip').forEach(chip => {
         chip.addEventListener('click', () => {
-            document.getElementById('amountInput').value = chip.dataset.amount;
+            const pct = chip.dataset.percent;
+            let amt = 0;
+            const total = getTotalBalance();
+            if (pct === 'MAX') amt = total;
+            else amt = total * (parseInt(pct) / 100);
+            
+            document.getElementById('amountInput').value = round2(amt);
             handleAmountChange();
         });
     });
@@ -1203,6 +1167,7 @@ function updateGrowingPath(trade, totalProgress) {
     if (!trade.revealed && totalProgress >= TRADE_GROW_END) { revealTradeResult(trade); }
 }
 
+// Попапы теперь идеально синхронизированы с финальным ответом сервера
 function spawnTickPopup(trade, candleIndex, priceAtTick) {
     const canvas = document.getElementById('marketCanvas');
     if (!canvas) return;
@@ -1216,8 +1181,13 @@ function spawnTickPopup(trade, candleIndex, priceAtTick) {
     const startScreen = projectToScreen(dataX, dataY, cam);
 
     const favorable = trade.direction === 'up' ? (priceAtTick - trade.entryPrice) : (trade.entryPrice - priceAtTick);
-    const movePercent = (favorable / trade.entryPrice) * 100;
-    const newTotal = estimateNetChange(trade.amount, movePercent);
+    const finalFavorableMove = trade.direction === 'up' ? (trade.finalPrice - trade.entryPrice) : (trade.entryPrice - trade.finalPrice);
+    
+    let fraction = finalFavorableMove !== 0 ? favorable / finalFavorableMove : 1;
+    let newTotal = trade.netChange * fraction;
+    
+    if (candleIndex === trade.expiryIndex) newTotal = trade.netChange;
+
     const delta = round2(newTotal - trade.lockedNet);
     trade.lockedNet = newTotal;
 
@@ -1290,24 +1260,6 @@ function renderBalance() {
     if (managerBtn) managerBtn.style.display = getTotalBalance() <= 0 ? 'block' : 'none';
 }
 
-// ПРАВИЛЬНОЕ СПИСАНИЕ БАЛАНСОВ (СНАЧАЛА РЕАЛ, ЗАТЕМ БОНУС)
-function applyTradeResultToBalance(netChange) {
-    if (netChange > 0) {
-        state.realBalance += netChange;
-    } else {
-        let loss = Math.abs(netChange);
-        if (state.realBalance >= loss) {
-            state.realBalance -= loss;
-        } else {
-            let remainder = loss - state.realBalance;
-            state.realBalance = 0;
-            state.bonusBalance = Math.max(0, state.bonusBalance - remainder);
-        }
-    }
-    persistBalance();
-    renderBalance();
-}
-
 function formatMoney(value) {
     const sign = value < 0 ? '-' : '';
     return sign + state.currencySymbol + Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
@@ -1316,19 +1268,6 @@ function formatMoney(value) {
 function formatSignedMoney(value) {
     const sign = value >= 0 ? '+' : '-';
     return sign + state.currencySymbol + Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
-}
-
-function round2(value) { return Math.round(value * 100) / 100; }
-
-function estimateNetChange(amount, movePercent) {
-    if (movePercent >= 0) {
-        const multiple = Math.min(movePercent / MOVE_SCALE_PERCENT, MAX_WIN_MULTIPLE);
-        return round2(amount * multiple);
-    } else {
-        const against = Math.abs(movePercent);
-        const fraction = MIN_LOSS_FRACTION + (1 - MIN_LOSS_FRACTION) * clamp01(against / MOVE_SCALE_PERCENT);
-        return round2(-amount * fraction); 
-    }
 }
 
 function computeTradeZoomTarget(entryPrice, pathCandles, geo) {
@@ -1347,54 +1286,61 @@ function bindDirectionButtons() {
     document.getElementById('downButton').addEventListener('click', () => placeTrade('down'));
 }
 
-function getTradePhaseChance(seqStr, tradesDone) {
-    if (!seqStr) return 50;
-    const parts = seqStr.split(' ').filter(p => p.includes(':'));
-    let passed = 0;
-    for (let part of parts) {
-        const splitPart = part.split(':');
-        if (splitPart.length !== 2) continue;
-        const count = parseInt(splitPart[1]);
-        const winChance = parseInt(splitPart[0].split('/')[0]);
-        if (tradesDone < passed + count) {
-            return winChance;
-        }
-        passed += count;
-    }
-    if (parts.length > 0) {
-        const lastPart = parts[parts.length - 1];
-        return parseInt(lastPart.split(':')[0].split('/')[0]);
-    }
-    return 50;
-}
+// Запрос к серверу, который берет на себя всю математику
+async function placeTrade(direction) {
+    if (state.tradeInProgress) return;
+    const amount = getEnteredAmount();
+    if (amount <= 0) { showNotice('Укажите сумму инвестиции', false); return; }
+    if (amount > getTotalBalance()) { showNotice('Недостаточно средств на счёте для этой сделки', false); return; }
 
-function placeTrade(direction) {
+    state.tradeInProgress = true;
+    document.getElementById('upButton').disabled = true;
+    document.getElementById('downButton').disabled = true;
+
     try {
-        if (state.tradeInProgress) return;
-        const amount = getEnteredAmount();
-        if (amount <= 0) {
-            showNotice('Укажите сумму инвестиции', false);
-            return;
-        }
-        if (amount > getTotalBalance()) {
-            showNotice('Недостаточно средств на счёте для этой сделки', false);
+        const response = await fetch(`${BASE_URL}/api/place_trade`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+            body: JSON.stringify({
+                user_id: state.userId,
+                amount: amount,
+                direction: direction,
+                initData: getInitData()
+            })
+        });
+        const data = await response.json();
+        
+        if (data.status !== 'success') {
+            let msg = 'Ошибка исполнения ордера';
+            if (data.message === 'bet_too_small') msg = `Минимальная ставка: ${formatMoney(data.min_bet)}`;
+            else if (data.message === 'insufficient_funds') msg = 'Недостаточно средств';
+            
+            showNotice(msg, false);
+            state.tradeInProgress = false;
+            document.getElementById('upButton').disabled = false;
+            document.getElementById('downButton').disabled = false;
             return;
         }
 
-        state.tradeInProgress = true;
-        document.getElementById('upButton').disabled = true;
-        document.getElementById('downButton').disabled = true;
+        const targetWin = data.won;
+        const netChange = data.net_change;
+
+        // Визуальное списание ставки во время анимации
+        let tempReal = state.realBalance;
+        let tempBonus = state.bonusBalance;
+        if (amount <= tempReal) tempReal -= amount;
+        else {
+            let rem = amount - tempReal;
+            tempReal = 0;
+            tempBonus = Math.max(0, tempBonus - rem);
+        }
+        state.realBalance = tempReal;
+        state.bonusBalance = tempBonus;
+        renderBalance();
 
         const entryPrice = marketCandles[marketCandles.length - 1].c;
-
-        const chanceNum = getTradePhaseChance(state.profit_seq, state.script_trades);
-        const winChance = chanceNum / 100;
-        const targetWin = Math.random() < winChance;
-
-        console.log(`[ПРОФИТ] Сделка №${state.script_trades + 1} | Фаза шанса: ${chanceNum}% | Задано: ${targetWin ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ'}`);
-
         let pathCandles = [];
-        let finalPrice, favorableMove, movePercent, netChange, won;
+        let finalPrice, favorableMove;
         let attempts = 0;
 
         do {
@@ -1406,28 +1352,17 @@ function placeTrade(direction) {
                 cursor = c.c;
             }
             finalPrice = pathCandles[pathCandles.length - 1].c;
-
-            favorableMove = direction === 'up'
-                ? (finalPrice - entryPrice)
-                : (entryPrice - finalPrice);
-                
+            favorableMove = direction === 'up' ? (finalPrice - entryPrice) : (entryPrice - finalPrice);
             if (favorableMove === 0) favorableMove = targetWin ? 0.05 : -0.05;
-
-            movePercent = (favorableMove / entryPrice) * 100;
-            netChange = estimateNetChange(amount, movePercent);
-            won = netChange > 0;
             attempts++;
-        } while (won !== targetWin && attempts < 100);
+        } while ((favorableMove > 0) !== targetWin && attempts < 100);
 
-        if (won !== targetWin) {
+        if ((favorableMove > 0) !== targetWin) {
              const shift = targetWin ? (entryPrice * 0.005) : -(entryPrice * 0.005);
              const forcedShift = direction === 'up' ? shift : -shift;
              finalPrice = entryPrice + forcedShift;
              pathCandles[pathCandles.length - 1].c = finalPrice;
              favorableMove = direction === 'up' ? (finalPrice - entryPrice) : (entryPrice - finalPrice);
-             movePercent = (favorableMove / entryPrice) * 100;
-             netChange = estimateNetChange(amount, movePercent);
-             won = targetWin;
         }
 
         state.script_trades++; 
@@ -1437,9 +1372,6 @@ function placeTrade(direction) {
         const zoomTarget = computeTradeZoomTarget(entryPrice, pathCandles, preGeo);
 
         document.getElementById('chartBox').classList.add('fullscreen');
-
-        // Списываем ставку со счетов
-        applyTradeResultToBalance(-amount);
 
         for (let i = 0; i < TRADE_CANDLES; i++) {
             const growingCandle = { o: entryPrice, h: entryPrice, l: entryPrice, c: entryPrice, v: 0 };
@@ -1454,14 +1386,17 @@ function placeTrade(direction) {
             entryIndex: entryIndex,
             expiryIndex: expiryIndex,
             entryPrice: entryPrice,
+            finalPrice: finalPrice,
             direction: direction,
             pathCandles: pathCandles,
             tickFired: new Array(TRADE_CANDLES).fill(false),
             flyingPopups: [],
             lockedNet: 0,
             displayedTotal: 0,
-            won: won,
+            won: targetWin,
             netChange: netChange,
+            newReal: data.new_real,
+            newBonus: data.new_bonus,
             amount: amount,
             revealed: false,
             result: null,
@@ -1473,20 +1408,25 @@ function placeTrade(direction) {
 
         updatePnlPanel(state.activeTrade); 
         runTradeAnimation();
+
     } catch (err) {
-        console.error('Ошибка открытия сделки:', err);
+        console.error('Ошибка сервера:', err);
         showNotice('Ошибка исполнения ордера', false);
         state.tradeInProgress = false;
+        document.getElementById('upButton').disabled = false;
+        document.getElementById('downButton').disabled = false;
     }
 }
 
+// Отрисовка финального результата на основе точных данных сервера
 function revealTradeResult(trade) {
     trade.revealed = true;
     trade.result = trade.won ? 'win' : 'lose';
 
-    // Возвращаем исходную ставку + профит на правильные счета
-    const refundAmount = trade.amount + trade.netChange;
-    applyTradeResultToBalance(refundAmount);
+    state.realBalance = trade.newReal;
+    state.bonusBalance = trade.newBonus;
+    persistBalance({ skipSync: true });
+    renderBalance();
     
     addHistoryEntry(trade.direction, trade.amount, trade.netChange);
 
@@ -1496,7 +1436,6 @@ function revealTradeResult(trade) {
     } else {
         showNotice(`${arrow} Сделка закрыта в минус: ${formatSignedMoney(trade.netChange)}`, false);
     }
-    scheduleSync(true);
 }
 
 function addHistoryEntry(direction, amount, netChange) {
