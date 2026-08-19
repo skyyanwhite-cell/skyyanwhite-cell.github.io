@@ -499,6 +499,7 @@ function makeTickerItem(symbol) {
 function refreshTicker() { try { buildTicker(); } catch (err) {} }
 
 function toggleAssetDropdown() {
+    if (state.tradeInProgress) return;
     const dd = document.getElementById('assetDropdown');
     dd.classList.toggle('show');
     if (dd.classList.contains('show')) renderAssetList();
