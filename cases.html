@@ -30,6 +30,17 @@
     }
     .container{ max-width: 400px; margin: 0 auto; width: 100%; flex: 1; display: flex; flex-direction: column; }
 
+    .ticker-wrap{
+        overflow: hidden; background: var(--surface); border: 1px solid var(--border);
+        border-radius: 8px; margin-bottom: 12px; padding: 8px 0; flex-shrink: 0;
+    }
+    .ticker-track{ display: flex; white-space: nowrap; animation: scroll-left 22s linear infinite; }
+    .ticker-item{ font-family: var(--mono); font-size: 12px; padding: 0 16px; border-right: 1px solid var(--border); color: var(--text-dim); letter-spacing: 0.2px; }
+    .ticker-item b{ color: var(--text); font-weight: 600; }
+    .t-up{ color: var(--green); }
+    .t-down{ color: var(--red); }
+    @keyframes scroll-left{ 0%{ transform: translateX(0); } 100%{ transform: translateX(-50%); } }
+
     .tabs{ display: flex; gap: 8px; margin-bottom: 14px; flex-shrink: 0;}
     .tab-btn{
         flex: 1; background: var(--surface); color: var(--text-dim); border: 1px solid var(--border);
@@ -40,7 +51,6 @@
     .page{ display: none; flex: 1; }
     .page.active{ display: block; }
 
-    /* Окно баланса с кнопками */
     .account-card{
         display: flex; align-items: center; justify-content: space-between; gap: 10px;
         background: linear-gradient(160deg, var(--surface-2), var(--surface)); border: 1px solid var(--border);
@@ -65,7 +75,6 @@
     }
     .action-btn:active { background: rgba(201,169,97,0.3); transform: scale(0.95); }
 
-    /* Полоса вагера */
     .wager-wrap {
         background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
         padding: 10px 14px; margin-bottom: 14px; flex-shrink: 0;
@@ -206,16 +215,12 @@
     .notice{ border: 1px solid var(--border); padding: 11px; border-radius: 9px; margin-top: 14px; text-align: center; font-weight: 600; font-size: 13px; display: none; }
     .notice.win{ color: var(--green); background: rgba(31,174,100,0.08); }
     .notice.lose{ color: var(--red); background: rgba(229,72,77,0.08); }
-
-    /* Бегущая строка в самом низу */
-    .ticker-wrap{
-        overflow: hidden; background: var(--surface); border: 1px solid var(--border);
-        border-radius: 8px; margin-top: auto; padding: 8px 0; flex-shrink: 0;
-    }
 </style>
 </head>
 <body>
 <div class="container">
+
+    <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
 
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('trade-page', event)">📊 Торговля</button>
@@ -229,14 +234,14 @@
             <div class="account-sub" id="accountSub">Статус: активен</div>
         </div>
         <div class="account-right">
-            <button class="action-btn" onclick="triggerBotAction('deposit')">💳 Пополнить</button>
-            <button class="action-btn" onclick="triggerBotAction('withdraw')">🏦 Вывод</button>
+            <button class="action-btn" onclick="triggerBotAction('deposit')">Пополнить</button>
+            <button class="action-btn" onclick="triggerBotAction('withdraw')">Вывод</button>
         </div>
     </div>
 
     <div class="wager-wrap">
         <div class="wager-header">
-            <span>Оборот (Вагер)</span>
+            <span>Оборот </span>
             <span class="wager-val" id="wagerText">$0 / $0 (0%)</span>
         </div>
         <div class="wager-track">
@@ -296,8 +301,6 @@
     <div id="history-page" class="page history-page">
         <div class="history-list" id="historyList"></div>
     </div>
-
-    <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
 
 </div>
 
@@ -407,7 +410,6 @@ let hasUnsyncedTrade = false;
 
 function getInitData() { return state.tg && state.tg.initData ? state.tg.initData : ''; }
 
-// ФУНКЦИЯ ДЛЯ КНОПОК ПОПОЛНИТЬ И ВЫВОД (вызов бота через API)
 async function triggerBotAction(action) {
     if (!state.userId) return;
     try {
@@ -445,7 +447,7 @@ function startBackgroundPolling() {
                     state.realBalance = sReal; state.bonusBalance = sBonus;
                     renderBalance(); renderWager(); persistBalance({ skipSync: true });
                 } else {
-                    renderWager(); // На всякий случай обновляем вагер
+                    renderWager();
                 }
             }
         } catch (err) {}
@@ -505,7 +507,7 @@ async function init() {
         document.getElementById('currentAssetLabel').textContent = state.currentAsset;
         
         renderBalance(); renderWager(); renderHistory(); buildTicker(); bindAmountInput(); bindQuickAmounts();
-        bindDirectionButtons();
+        bindDirectionButtons(); 
         
         initMarketChart(ASSET_PRICES[state.currentAsset]); 
         setInterval(refreshTicker, 4000);
