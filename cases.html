@@ -220,8 +220,6 @@
 <body>
 <div class="container">
 
-    <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
-
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('trade-page', event)">📊 Торговля</button>
         <button class="tab-btn" onclick="switchTab('history-page', event)">🕓 История</button>
@@ -241,7 +239,7 @@
 
     <div class="wager-wrap">
         <div class="wager-header">
-            <span>Оборот </span>
+            <span>Оборот (Вагер)</span>
             <span class="wager-val" id="wagerText">$0 / $0 (0%)</span>
         </div>
         <div class="wager-track">
@@ -301,6 +299,8 @@
     <div id="history-page" class="page history-page">
         <div class="history-list" id="historyList"></div>
     </div>
+
+    <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
 
 </div>
 
@@ -555,7 +555,51 @@ function makeTickerItem(symbol) {
     return `<span class="ticker-item"><b>${symbol}</b> ${arrow} <span class="${cls}">${sign}${change}%</span></span>`;
 }
 
-function refreshTicker() { try { buildTicker(); } catch (err) {} }
+function refreshTicker() {
+    try {
+        TICKER_SYMBOLS.forEach(sym => { 
+            let current = parseFloat(assetChanges[sym]);
+            let shift = (Math.random() * 0.6 - 0.3);
+            let val = current + shift;
+            if(val > 6) val = 6; if(val < -6) val = -6;
+            assetChanges[sym] = val.toFixed(2); 
+        });
+
+        const track = document.getElementById('tickerTrack');
+        if (track) {
+            const items = track.querySelectorAll('.ticker-item');
+            items.forEach(item => {
+                const sym = item.querySelector('b').textContent;
+                const change = assetChanges[sym];
+                if (change !== undefined) {
+                    const up = parseFloat(change) >= 0; 
+                    const arrow = up ? '📈' : '📉'; 
+                    const cls = up ? 't-up' : 't-down'; 
+                    const sign = up ? '+' : '';
+                    item.innerHTML = `<b>${sym}</b> ${arrow} <span class="${cls}">${sign}${change}%</span>`;
+                }
+            });
+        }
+
+        const dd = document.getElementById('assetDropdown');
+        if (dd && dd.classList.contains('show')) {
+            const ddItems = dd.querySelectorAll('.asset-item');
+            ddItems.forEach(item => {
+                const symEl = item.querySelector('.asset-sym');
+                const pctEl = item.querySelector('.asset-pct');
+                if (symEl && pctEl) {
+                    const sym = symEl.textContent;
+                    const change = assetChanges[sym];
+                    if (change !== undefined) {
+                        const isPos = parseFloat(change) >= 0;
+                        pctEl.className = `asset-pct ${isPos ? 'pos' : 'neg'}`;
+                        pctEl.textContent = `${isPos ? '+' : ''}${change}%`;
+                    }
+                }
+            });
+        }
+    } catch (err) {}
+}
 
 function toggleAssetDropdown() {
     if (state.tradeInProgress) return;
@@ -590,7 +634,7 @@ function renderAssetList() {
 
         item.innerHTML = `
             <div class="asset-info">
-                <span>${sym}</span>
+                <span class="asset-sym">${sym}</span>
                 <span class="asset-pct ${isPos ? 'pos' : 'neg'}">${isPos ? '+' : ''}${change}%</span>
             </div>
             <div class="asset-star ${isFav ? 'fav' : ''}" onclick="toggleFavorite('${sym}', event)">★</div>
