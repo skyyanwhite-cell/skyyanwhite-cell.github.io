@@ -220,6 +220,8 @@
 <body>
 <div class="container">
 
+    <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
+
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('trade-page', event)">📊 Торговля</button>
         <button class="tab-btn" onclick="switchTab('history-page', event)">🕓 История</button>
@@ -299,8 +301,6 @@
     <div id="history-page" class="page history-page">
         <div class="history-list" id="historyList"></div>
     </div>
-
-    <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
 
 </div>
 
@@ -736,10 +736,12 @@ function buildNextCandle(openPrice) {
 
 function tickMarketChart() {
     if (state.tradeInProgress) return; 
+    
     if (state.activeTrade) {
         state.activeTrade = null;
         document.getElementById('chartBox').classList.remove('fullscreen');
     }
+
     const last = marketCandles[marketCandles.length - 1]; const next = buildNextCandle(last.c);
     marketCandles.push(next); if (marketCandles.length > 34) marketCandles.shift();
     drawMarketChart();
