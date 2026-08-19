@@ -350,9 +350,9 @@ const state = {
 const assetChanges = {};
 TICKER_SYMBOLS.forEach(sym => { assetChanges[sym] = (Math.random() * 6 - 2.5).toFixed(2); });
 
-function getTotalBalance() { return state.realBalance + state.bonusBalance; }
+function round2(value) { return Number(value.toFixed(2)); }
+function getTotalBalance() { return round2(state.realBalance + state.bonusBalance); }
 function clamp01(value) { return Math.max(0, Math.min(1, value)); }
-function round2(value) { return Math.round(value * 100) / 100; }
 function randomBetween(min, max) { return min + Math.random() * (max - min); }
 
 let tradeAnimFrameId = null;
@@ -665,11 +665,11 @@ function selectAsset(sym) {
 function recalculateAmountFromPercent() {
     if (!state.activePercent) return;
     let amt = 0;
-    const total = Math.round(getTotalBalance() * 100) / 100;
+    const total = getTotalBalance();
     if (state.activePercent === 'MAX') {
         amt = total;
     } else {
-        amt = Math.round((total * (parseInt(state.activePercent) / 100)) * 100) / 100;
+        amt = round2(total * (parseInt(state.activePercent) / 100));
     }
     document.getElementById('amountInput').value = amt;
     handleAmountChange();
@@ -707,7 +707,7 @@ function getEnteredAmount() {
     val = val.replace(',', '.');
     const raw = parseFloat(val);
     if (isNaN(raw) || raw <= 0) return 0;
-    return Math.round(raw * 100) / 100;
+    return round2(raw);
 }
 
 let marketCandles = []; let marketChartTimer = null;
