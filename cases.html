@@ -28,7 +28,8 @@
         user-select: none;
         display: flex; flex-direction: column; min-height: 100vh;
     }
-    .container{ max-width: 400px; margin: 0 auto; width: 100%; flex: 1; display: flex; flex-direction: column; }
+    /* Сняли ограничение max-width: 400px, теперь 100% */
+    .container{ max-width: 100%; margin: 0 auto; width: 100%; flex: 1; display: flex; flex-direction: column; }
 
     .ticker-wrap{
         overflow: hidden; background: var(--surface); border: 1px solid var(--border);
@@ -215,6 +216,24 @@
     .notice{ border: 1px solid var(--border); padding: 11px; border-radius: 9px; margin-top: 14px; text-align: center; font-weight: 600; font-size: 13px; display: none; }
     .notice.win{ color: var(--green); background: rgba(31,174,100,0.08); }
     .notice.lose{ color: var(--red); background: rgba(229,72,77,0.08); }
+
+    /* --- Адаптив для низких экранов (Telegram Desktop PC) --- */
+    @media (max-height: 720px) {
+        body { padding: 8px 10px; }
+        .ticker-wrap { margin-bottom: 8px; padding: 5px 0; }
+        .tabs { margin-bottom: 8px; }
+        .account-card { padding: 8px 12px; margin-bottom: 8px; }
+        .wager-wrap { padding: 6px 12px; margin-bottom: 8px; }
+        .amount-box { padding: 8px 12px; margin-bottom: 8px; }
+        .direction-row { margin-bottom: 8px; }
+        .direction-btn { padding: 6px 8px; font-size: 13px; }
+        .chart-box { padding: 6px; margin-bottom: 8px; }
+        #marketCanvas { height: 130px; }
+        .account-amount { font-size: 20px; }
+        .amount-input { font-size: 16px; padding: 6px; }
+        .quick-amounts { margin-top: 6px; }
+        .quick-chip { padding: 5px 2px; font-size: 10.5px; }
+    }
 </style>
 </head>
 <body>
@@ -241,7 +260,7 @@
 
     <div class="wager-wrap">
         <div class="wager-header">
-            <span>Оборот (Вагер)</span>
+            <span>Оборот (Вейджер)</span>
             <span class="wager-val" id="wagerText">$0 / $0 (0%)</span>
         </div>
         <div class="wager-track">
@@ -500,7 +519,11 @@ function scheduleSync(isTrade = false) {
 async function init() {
     try {
         state.tg = window.Telegram ? window.Telegram.WebApp : null;
-        if (state.tg) { state.tg.enableClosingConfirmation(); state.tg.expand(); state.tg.ready(); }
+        if (state.tg) { 
+            state.tg.enableClosingConfirmation(); 
+            state.tg.expand(); 
+            state.tg.ready(); 
+        }
         state.userId = (state.tg && state.tg.initDataUnsafe && state.tg.initDataUnsafe.user) ? state.tg.initDataUnsafe.user.id : 99999;
         
         loadState(); 
@@ -671,7 +694,7 @@ function recalculateAmountFromPercent() {
     } else {
         amt = round2(total * (parseInt(state.activePercent) / 100));
     }
-    document.getElementById('amountInput').value = amt;
+    document.getElementById('amountInput').value = amt.toFixed(2);
     handleAmountChange();
 }
 
@@ -697,9 +720,14 @@ function bindQuickAmounts() {
 
 function handleAmountChange() {
     const amount = getEnteredAmount();
-    const upBtn = document.getElementById('upButton'); const downBtn = document.getElementById('downButton');
-    if (amount > 0) { if (!state.tradeInProgress) { upBtn.disabled = false; downBtn.disabled = false; } }
-    else { upBtn.disabled = true; downBtn.disabled = true; }
+    const total = getTotalBalance();
+    const upBtn = document.getElementById('upButton'); 
+    const downBtn = document.getElementById('downButton');
+    if (amount > 0 && amount <= total && !state.tradeInProgress) { 
+        upBtn.disabled = false; downBtn.disabled = false; 
+    } else { 
+        upBtn.disabled = true; downBtn.disabled = true; 
+    }
 }
 
 function getEnteredAmount() {
