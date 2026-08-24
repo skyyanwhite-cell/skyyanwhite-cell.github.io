@@ -132,18 +132,18 @@
     }
     .quick-chip.active{ border-color: var(--gold); color: var(--gold-bright); animation: pulse-gold-border 1.5s infinite; }
 
-    @keyframes pulse-green { 0%{box-shadow: 0 0 10px rgba(31, 174, 100, 0.3);} 50%{box-shadow: 0 0 25px rgba(31, 174, 100, 0.7);} 100%{box-shadow: 0 0 10px rgba(31, 174, 100, 0.3);} }
-    @keyframes pulse-red { 0%{box-shadow: 0 0 10px rgba(229, 72, 77, 0.3);} 50%{box-shadow: 0 0 25px rgba(229, 72, 77, 0.7);} 100%{box-shadow: 0 0 10px rgba(229, 72, 77, 0.3);} }
+    @keyframes pulse-green { 0%{box-shadow: 0 0 10px rgba(31, 174, 100, 0.4);} 50%{box-shadow: 0 0 25px rgba(31, 174, 100, 0.85);} 100%{box-shadow: 0 0 10px rgba(31, 174, 100, 0.4);} }
+    @keyframes pulse-red { 0%{box-shadow: 0 0 10px rgba(229, 72, 77, 0.4);} 50%{box-shadow: 0 0 25px rgba(229, 72, 77, 0.85);} 100%{box-shadow: 0 0 10px rgba(229, 72, 77, 0.4);} }
 
     .direction-row{ display: flex; gap: 10px; margin-bottom: 12px; flex-shrink: 0; }
     .direction-btn{
-        flex: 1; border: none; border-radius: 10px; padding: 10px 8px; font-size: 14px; font-weight: 700;
-        cursor: pointer; letter-spacing: 0.2px; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: transform .1s ease;
+        flex: 1; border: none; border-radius: 10px; padding: 13px 8px; font-size: 18px; font-weight: 800; text-transform: uppercase;
+        cursor: pointer; letter-spacing: 1px; display: flex; flex-direction: row; align-items: center; justify-content: center; transition: transform .1s ease;
+        color: #FFFFFF; text-shadow: 0 1px 3px rgba(0,0,0,0.6);
     }
-    .direction-btn:active{ transform: scale(0.97); }
-    .direction-btn .dir-arrow{ font-size: 18px; }
-    .direction-btn.up{ background: linear-gradient(135deg, #2BD881, #1FAE64); color: #06180F; border: 1px solid #4ade80; animation: pulse-green 2s infinite; }
-    .direction-btn.down{ background: linear-gradient(135deg, #F26065, #E5484D); color: #1A0607; border: 1px solid #f87171; animation: pulse-red 2s infinite; }
+    .direction-btn:active{ transform: scale(0.96); }
+    .direction-btn.up{ background: radial-gradient(ellipse at center, #32EA8F 0%, #158F4E 100%); border: 2px solid #4ade80; animation: pulse-green 1.8s infinite; }
+    .direction-btn.down{ background: radial-gradient(ellipse at center, #FF6B6B 0%, #B82328 100%); border: 2px solid #f87171; animation: pulse-red 1.8s infinite; }
     .direction-btn:disabled{ opacity: 0.4; cursor: not-allowed; transform: none; animation: none; border-color: transparent; }
 
     .chart-box{
@@ -258,7 +258,7 @@
         .wager-wrap { padding: 6px 12px; margin-bottom: 8px; }
         .amount-box { padding: 8px 12px; margin-bottom: 8px; }
         .direction-row { margin-bottom: 8px; }
-        .direction-btn { padding: 6px 8px; font-size: 13px; }
+        .direction-btn { padding: 10px 8px; font-size: 16px; }
         .chart-box { padding: 6px; margin-bottom: 8px; }
         #marketCanvas { height: 130px; }
         .account-amount { font-size: 20px; }
@@ -320,12 +320,10 @@
 
         <div class="direction-row">
             <button class="direction-btn up" id="upButton" disabled>
-                <span class="dir-arrow">▲</span>
-                <span>Sube</span>
+                Sube
             </button>
             <button class="direction-btn down" id="downButton" disabled>
-                <span class="dir-arrow">▼</span>
-                <span>Baja</span>
+                Baja
             </button>
         </div>
 
