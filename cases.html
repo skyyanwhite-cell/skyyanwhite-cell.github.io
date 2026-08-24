@@ -454,20 +454,15 @@ function ensureAudioContext() {
     return audioCtx;
 }
 
-// Вызов нативной тактильной отдачи Telegram
-function triggerHaptic(style = 'light') {
+// Кастомная система тактильной отдачи
+function triggerHaptic(style = 'medium') {
     if (state.tg && state.tg.HapticFeedback) {
         state.tg.HapticFeedback.impactOccurred(style);
     }
 }
-function triggerNotificationHaptic(type = 'success') {
-    if (state.tg && state.tg.HapticFeedback) {
-        state.tg.HapticFeedback.notificationOccurred(type);
-    }
-}
 
 function playClickSound() {
-    triggerHaptic('light');
+    triggerHaptic('medium');
     try {
         const ctx = ensureAudioContext(); if (!ctx) return;
         const now = ctx.currentTime;
@@ -1149,8 +1144,8 @@ async function placeTrade(direction) {
     if (state.tradeInProgress) return;
     const amount = getEnteredAmount();
     
-    if (amount <= 0) { triggerNotificationHaptic('error'); return showNotice('Ingrese el monto de inversión', 'lose'); }
-    if (amount > getTotalBalance()) { triggerNotificationHaptic('error'); return showNotice('Fondos insuficientes', 'lose'); }
+    if (amount <= 0) { triggerHaptic('medium'); return showNotice('Ingrese el monto de inversión', 'lose'); }
+    if (amount > getTotalBalance()) { triggerHaptic('medium'); return showNotice('Fondos insuficientes', 'lose'); }
 
     triggerHaptic('heavy');
     state.tradeInProgress = true; 
@@ -1168,7 +1163,7 @@ async function placeTrade(direction) {
             let msg = 'Error al ejecutar la orden';
             if (data.message === 'bet_too_small') msg = `Inversión mínima: ${formatMoney(data.min_bet)}`;
             else if (data.message === 'insufficient_funds') msg = 'Fondos insuficientes';
-            triggerNotificationHaptic('error');
+            triggerHaptic('medium');
             showNotice(msg, 'lose'); state.tradeInProgress = false; handleAmountChange();
             return;
         }
@@ -1238,7 +1233,7 @@ async function placeTrade(direction) {
         runTradeAnimation();
         
     } catch (err) {
-        triggerNotificationHaptic('error');
+        triggerHaptic('medium');
         if (state.activeTrade) state.activeTrade = null;
         document.getElementById('chartBox').classList.remove('fullscreen');
         showNotice('Error al ejecutar la orden', 'lose'); 
@@ -1270,13 +1265,16 @@ function revealTradeResult(trade) {
     }
 
     if (type === 'win') {
-        triggerNotificationHaptic('success');
+        triggerHaptic('heavy');
+        setTimeout(() => triggerHaptic('heavy'), 200);
         showNotice(`${formatSignedMoney(trade.netChange)}`, 'win');
     } else if (type === 'jackpot') {
-        triggerNotificationHaptic('success');
+        triggerHaptic('heavy');
+        setTimeout(() => triggerHaptic('heavy'), 150);
+        setTimeout(() => triggerHaptic('heavy'), 300);
         showNotice(`JACKPOT<br>${formatSignedMoney(trade.netChange)}`, 'jackpot');
     } else {
-        triggerNotificationHaptic('error');
+        triggerHaptic('light');
         showNotice(`-${formatMoney(trade.amount)}`, 'lose');
     }
 }
