@@ -1249,9 +1249,9 @@ function revealTradeResult(trade) {
     }
 
     if (type === 'win') {
-        showNotice(`+${formatSignedMoney(trade.netChange)}`, 'win');
+        showNotice(`${formatSignedMoney(trade.netChange)}`, 'win');
     } else if (type === 'jackpot') {
-        showNotice(`JACKPOT<br>+${formatSignedMoney(trade.netChange)}`, 'jackpot');
+        showNotice(`JACKPOT<br>${formatSignedMoney(trade.netChange)}`, 'jackpot');
     } else {
         showNotice(`-${formatMoney(trade.amount)}`, 'lose');
     }
