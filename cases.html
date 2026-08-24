@@ -31,6 +31,37 @@
     }
     .container{ max-width: 100%; margin: 0 auto; width: 100%; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
+    /* Boot Loader */
+    .boot-loader {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: #0A0D12; z-index: 9999; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        transition: opacity 0.6s ease, visibility 0.6s ease;
+    }
+    .boot-loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .boot-logo {
+        font-size: 52px; font-weight: 800; letter-spacing: 1px;
+        background: linear-gradient(135deg, #E8C874, #C9A961, #8A6D3B);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        animation: logo-pulse 2s infinite alternate; margin-bottom: 20px;
+    }
+    .boot-logo span { font-size: 64px; }
+    .boot-spinner {
+        width: 40px; height: 40px; border: 3px solid rgba(201,169,97,0.2);
+        border-top-color: var(--gold-bright); border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    @keyframes logo-pulse { 0% { filter: drop-shadow(0 0 10px rgba(232,200,116,0.2)); } 100% { filter: drop-shadow(0 0 25px rgba(232,200,116,0.6)); } }
+
+    /* Skeleton Loading */
+    .skeleton {
+        color: transparent !important; background: linear-gradient(90deg, #1B212C 25%, #252D3D 50%, #1B212C 75%);
+        background-size: 200% 100%; animation: skeleton-loading 1.5s infinite;
+        border-radius: 6px; display: inline-block; min-width: 80px;
+    }
+    @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
     .ticker-wrap{
         overflow: hidden; background: var(--surface); border: 1px solid var(--border);
         border-radius: 8px; margin-bottom: 14px; padding: 8px 0; flex-shrink: 0;
@@ -269,8 +300,12 @@
 </style>
 </head>
 <body>
-<div class="container">
+<div id="bootLoader" class="boot-loader">
+    <div class="boot-logo">Profit<span>X</span></div>
+    <div class="boot-spinner"></div>
+</div>
 
+<div class="container">
     <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
 
     <div class="tabs">
@@ -281,7 +316,7 @@
     <div class="account-card">
         <div class="account-left">
             <div class="account-label">Cuenta de Trading</div>
-            <div class="account-amount" id="globalBalance">0</div>
+            <div class="account-amount skeleton" id="globalBalance">0.00</div>
             <div class="account-sub" id="accountSub">Estado: Activo</div>
         </div>
         <div class="account-right">
@@ -293,7 +328,7 @@
     <div class="wager-wrap">
         <div class="wager-header">
             <span>Volumen de trading</span>
-            <span class="wager-val" id="wagerText">$0 / $0 (0%)</span>
+            <span class="wager-val skeleton" id="wagerText">$0 / $0 (0%)</span>
         </div>
         <div class="wager-track">
             <div class="wager-fill" id="wagerFill"></div>
@@ -301,7 +336,6 @@
     </div>
 
     <div id="trade-page" class="page active">
-
         <div class="amount-box">
             <div class="amount-label">Monto de inversión</div>
             <div class="amount-input-row">
@@ -319,12 +353,8 @@
         </div>
 
         <div class="direction-row">
-            <button class="direction-btn up" id="upButton" disabled>
-                Sube
-            </button>
-            <button class="direction-btn down" id="downButton" disabled>
-                Baja
-            </button>
+            <button class="direction-btn up" id="upButton" disabled>Sube</button>
+            <button class="direction-btn down" id="downButton" disabled>Baja</button>
         </div>
 
         <div class="chart-box" id="chartBox">
@@ -336,13 +366,11 @@
             </div>
             
             <div class="asset-dropdown" id="assetDropdown"></div>
-
             <canvas id="marketCanvas"></canvas>
             <div class="trade-pnl-panel" id="tradePnlPanel">
                 <div class="trade-pnl-percent" id="tradePnlPercent">+0%</div>
                 <div class="trade-pnl-amount" id="tradePnlAmount">+0</div>
             </div>
-
             <div class="notice-overlay" id="noticeOverlay">
                 <div class="notice-msg" id="noticeMsg"></div>
             </div>
@@ -352,7 +380,6 @@
     <div id="history-page" class="page history-page">
         <div class="history-list" id="historyList"></div>
     </div>
-
 </div>
 
 <script>
@@ -427,7 +454,20 @@ function ensureAudioContext() {
     return audioCtx;
 }
 
+// Вызов нативной тактильной отдачи Telegram
+function triggerHaptic(style = 'light') {
+    if (state.tg && state.tg.HapticFeedback) {
+        state.tg.HapticFeedback.impactOccurred(style);
+    }
+}
+function triggerNotificationHaptic(type = 'success') {
+    if (state.tg && state.tg.HapticFeedback) {
+        state.tg.HapticFeedback.notificationOccurred(type);
+    }
+}
+
 function playClickSound() {
+    triggerHaptic('light');
     try {
         const ctx = ensureAudioContext(); if (!ctx) return;
         const now = ctx.currentTime;
@@ -477,7 +517,7 @@ async function triggerBotAction(action) {
             headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
             body: JSON.stringify({ user_id: state.userId, action: action })
         });
-    } catch (e) { console.log(e); }
+    } catch (e) {}
     if (state.tg) state.tg.close();
 }
 
@@ -513,12 +553,18 @@ function startBackgroundPolling() {
     }, 3000);
 }
 
+function removeSkeletons() {
+    document.getElementById('globalBalance').classList.remove('skeleton');
+    document.getElementById('wagerText').classList.remove('skeleton');
+    document.getElementById('bootLoader').classList.add('hidden');
+}
+
 async function loadUserProfileFromServer() {
-    if (!state.userId) return;
+    if (!state.userId) { removeSkeletons(); return; }
     profileLoadInFlight = true;
     try {
         const response = await fetch(`${BASE_URL}/api/get_profile?user_id=${encodeURIComponent(state.userId)}`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
-        if (!response.ok) throw new Error('Сервер вернул статус ' + response.status);
+        if (!response.ok) throw new Error('Status ' + response.status);
         const data = await response.json();
         if (data.status === 'success') {
             state.realBalance = parseFloat(data.real_balance) || 0;
@@ -527,11 +573,13 @@ async function loadUserProfileFromServer() {
             state.requiredTrades = data.required_trades !== undefined ? parseFloat(data.required_trades) : 0;
             state.profileLoaded = true;
             persistBalance({ skipSync: true });
-            renderBalance();
-            renderWager();
         }
     } catch (err) { state.profileLoaded = true; }
-    finally { profileLoadInFlight = false; }
+    finally { 
+        profileLoadInFlight = false; 
+        removeSkeletons();
+        renderBalance(); renderWager();
+    }
 }
 
 async function syncDataWithBot() {
@@ -569,7 +617,7 @@ async function init() {
         loadState(); 
         document.getElementById('currentAssetLabel').textContent = state.currentAsset;
         
-        renderBalance(); renderWager(); renderHistory(); buildTicker(); bindAmountInput(); bindQuickAmounts();
+        renderHistory(); buildTicker(); bindAmountInput(); bindQuickAmounts();
         bindDirectionButtons(); 
         
         initMarketChart(ASSET_PRICES[state.currentAsset]); 
@@ -589,9 +637,7 @@ function loadState() {
         state.favorites = JSON.parse(localStorage.getItem('tt_fav_assets')) || [];
         state.currentAsset = localStorage.getItem('tt_current_asset') || 'SOL';
     } catch (err) { 
-        state.history = []; 
-        state.favorites = [];
-        state.currentAsset = 'SOL';
+        state.history = []; state.favorites = []; state.currentAsset = 'SOL';
     }
 }
 
@@ -636,14 +682,11 @@ function refreshTicker() {
                 const change = assetChanges[sym];
                 if (change !== undefined) {
                     const up = parseFloat(change) >= 0; 
-                    const arrow = up ? '📈' : '📉'; 
-                    const cls = up ? 't-up' : 't-down'; 
-                    const sign = up ? '+' : '';
+                    const arrow = up ? '📈' : '📉'; const cls = up ? 't-up' : 't-down'; const sign = up ? '+' : '';
                     item.innerHTML = `<b>${sym}</b> ${arrow} <span class="${cls}">${sign}${change}%</span>`;
                 }
             });
         }
-
         const dd = document.getElementById('assetDropdown');
         if (dd && dd.classList.contains('show')) {
             const ddItems = dd.querySelectorAll('.asset-item');
@@ -674,7 +717,6 @@ function toggleAssetDropdown() {
 function renderAssetList() {
     const list = document.getElementById('assetDropdown');
     list.innerHTML = '';
-    
     const sorted = [...TICKER_SYMBOLS].sort((a, b) => {
         const aFav = state.favorites.includes(a);
         const bFav = state.favorites.includes(b);
@@ -690,11 +732,9 @@ function renderAssetList() {
             if (e.target.classList.contains('asset-star')) return;
             selectAsset(sym);
         };
-
         const change = assetChanges[sym];
         const isPos = parseFloat(change) >= 0;
         const isFav = state.favorites.includes(sym);
-
         item.innerHTML = `
             <div class="asset-info">
                 <span class="asset-sym">${sym}</span>
@@ -708,18 +748,14 @@ function renderAssetList() {
 
 function toggleFavorite(sym, evt) {
     evt.stopPropagation();
-    if (state.favorites.includes(sym)) {
-        state.favorites = state.favorites.filter(f => f !== sym);
-    } else {
-        state.favorites.push(sym);
-    }
+    if (state.favorites.includes(sym)) { state.favorites = state.favorites.filter(f => f !== sym); } 
+    else { state.favorites.push(sym); }
     localStorage.setItem('tt_fav_assets', JSON.stringify(state.favorites));
     renderAssetList();
 }
 
 function selectAsset(sym) {
-    state.currentAsset = sym;
-    localStorage.setItem('tt_current_asset', sym);
+    state.currentAsset = sym; localStorage.setItem('tt_current_asset', sym);
     document.getElementById('currentAssetLabel').textContent = sym;
     document.getElementById('assetDropdown').classList.remove('show');
     initMarketChart(ASSET_PRICES[sym]);
@@ -727,13 +763,9 @@ function selectAsset(sym) {
 
 function recalculateAmountFromPercent() {
     if (!state.activePercent) return;
-    let amt = 0;
-    const total = getTotalBalance();
-    if (state.activePercent === 'MAX') {
-        amt = total;
-    } else {
-        amt = round2(total * (parseInt(state.activePercent) / 100));
-    }
+    let amt = 0; const total = getTotalBalance();
+    if (state.activePercent === 'MAX') { amt = total; } 
+    else { amt = round2(total * (parseInt(state.activePercent) / 100)); }
     document.getElementById('amountInput').value = amt.toFixed(2);
     handleAmountChange();
 }
@@ -759,22 +791,15 @@ function bindQuickAmounts() {
 }
 
 function handleAmountChange() {
-    const amount = getEnteredAmount();
-    const total = getTotalBalance();
-    const upBtn = document.getElementById('upButton'); 
-    const downBtn = document.getElementById('downButton');
-    if (amount > 0 && amount <= total && !state.tradeInProgress) { 
-        upBtn.disabled = false; downBtn.disabled = false; 
-    } else { 
-        upBtn.disabled = true; downBtn.disabled = true; 
-    }
+    const amount = getEnteredAmount(); const total = getTotalBalance();
+    const upBtn = document.getElementById('upButton'); const downBtn = document.getElementById('downButton');
+    if (amount > 0 && amount <= total && !state.tradeInProgress) { upBtn.disabled = false; downBtn.disabled = false; } 
+    else { upBtn.disabled = true; downBtn.disabled = true; }
 }
 
 function getEnteredAmount() {
-    let val = document.getElementById('amountInput').value;
-    val = val.replace(',', '.');
-    const raw = parseFloat(val);
-    if (isNaN(raw) || raw <= 0) return 0;
+    let val = document.getElementById('amountInput').value; val = val.replace(',', '.');
+    const raw = parseFloat(val); if (isNaN(raw) || raw <= 0) return 0;
     return round2(raw);
 }
 
@@ -793,9 +818,7 @@ function generateInitialCandles(n, basePrice) {
 }
 
 function buildNextCandle(openPrice) {
-    const open = openPrice; 
-    const volatility = open * 0.015;
-    const change = (Math.random() - 0.48) * volatility;
+    const open = openPrice; const volatility = open * 0.015; const change = (Math.random() - 0.48) * volatility;
     let close = Math.max(open * 0.001, open + change); 
     const high = Math.max(open, close) + Math.random() * (volatility * 0.4);
     const low = Math.max(open * 0.0001, Math.min(open, close) - Math.random() * (volatility * 0.4));
@@ -831,7 +854,6 @@ function indexToX(index, geo) { return index * geo.slotWidth + geo.slotWidth / 2
 function indexToSlotRightEdge(index, geo) { return (index + 1) * geo.slotWidth; }
 
 function projectToScreen(x, y, cam) { return { x: cam.panX + cam.scale * x, y: cam.panY + cam.scale * y }; }
-function clampScreenY(y, cssHeight) { return Math.max(14, Math.min(cssHeight - 14, y)); }
 
 function getChartCameraTransform(geo) {
     const trade = state.activeTrade; const centerX = geo.cssWidth / 2; const centerY = geo.priceAreaH / 2;
@@ -986,10 +1008,7 @@ function spawnTickPopup(trade, candleIndex, priceAtTick) {
     let newTotal = trade.netChange * fraction;
     
     if (candleIndex === trade.expiryIndex) newTotal = trade.netChange;
-
-    if (newTotal < -trade.amount) {
-        newTotal = -trade.amount;
-    }
+    if (newTotal < -trade.amount) newTotal = -trade.amount;
 
     const delta = round2(newTotal - trade.lockedNet);
     trade.lockedNet = newTotal;
@@ -1036,9 +1055,7 @@ function updateGrowingPath(trade, totalProgress) {
         prevClose = target.c;
     }
     
-    if (!trade.revealed && totalProgress >= TRADE_GROW_END) {
-        revealTradeResult(trade);
-    }
+    if (!trade.revealed && totalProgress >= TRADE_GROW_END) revealTradeResult(trade);
 }
 
 function runTradeAnimation() {
@@ -1064,11 +1081,9 @@ function runTradeAnimation() {
                 handleAmountChange();
             }
         } catch (e) {
-            console.error("Сбой анимации:", e);
             state.activeTrade = null;
             document.getElementById('chartBox').classList.remove('fullscreen');
-            state.tradeInProgress = false;
-            handleAmountChange();
+            state.tradeInProgress = false; handleAmountChange();
         }
     }
     tradeAnimFrameId = requestAnimationFrame(frame);
@@ -1085,6 +1100,9 @@ function switchTab(pageId, evt) {
 
 function renderBalance() {
     const el = document.getElementById('globalBalance');
+    if (document.getElementById('bootLoader').classList.contains('hidden')) {
+        el.classList.remove('skeleton');
+    }
     el.textContent = formatMoney(getTotalBalance());
     el.classList.toggle('negative', getTotalBalance() < 0);
     document.getElementById('accountSub').textContent = getTotalBalance() < 0 ? 'Estado: Llamada de margen (Margin Call)' : 'Estado: Activo';
@@ -1095,12 +1113,13 @@ function renderWager() {
     const txt = document.getElementById('wagerText');
     if (!fill || !txt) return;
 
-    let pct = 0;
-    if (state.requiredTrades > 0) {
-        pct = (state.turnover / state.requiredTrades) * 100;
-    } else if (state.turnover > 0) {
-        pct = 100;
+    if (document.getElementById('bootLoader').classList.contains('hidden')) {
+        txt.classList.remove('skeleton');
     }
+
+    let pct = 0;
+    if (state.requiredTrades > 0) { pct = (state.turnover / state.requiredTrades) * 100; } 
+    else if (state.turnover > 0) { pct = 100; }
     if (pct > 100) pct = 100;
 
     fill.style.width = pct + '%';
@@ -1130,9 +1149,10 @@ async function placeTrade(direction) {
     if (state.tradeInProgress) return;
     const amount = getEnteredAmount();
     
-    if (amount <= 0) return showNotice('Ingrese el monto de inversión', 'lose');
-    if (amount > getTotalBalance()) return showNotice('Fondos insuficientes', 'lose');
+    if (amount <= 0) { triggerNotificationHaptic('error'); return showNotice('Ingrese el monto de inversión', 'lose'); }
+    if (amount > getTotalBalance()) { triggerNotificationHaptic('error'); return showNotice('Fondos insuficientes', 'lose'); }
 
+    triggerHaptic('heavy');
     state.tradeInProgress = true; 
     document.getElementById('upButton').disabled = true; 
     document.getElementById('downButton').disabled = true;
@@ -1148,6 +1168,7 @@ async function placeTrade(direction) {
             let msg = 'Error al ejecutar la orden';
             if (data.message === 'bet_too_small') msg = `Inversión mínima: ${formatMoney(data.min_bet)}`;
             else if (data.message === 'insufficient_funds') msg = 'Fondos insuficientes';
+            triggerNotificationHaptic('error');
             showNotice(msg, 'lose'); state.tradeInProgress = false; handleAmountChange();
             return;
         }
@@ -1217,7 +1238,7 @@ async function placeTrade(direction) {
         runTradeAnimation();
         
     } catch (err) {
-        console.error('Ошибка исполнения:', err);
+        triggerNotificationHaptic('error');
         if (state.activeTrade) state.activeTrade = null;
         document.getElementById('chartBox').classList.remove('fullscreen');
         showNotice('Error al ejecutar la orden', 'lose'); 
@@ -1249,10 +1270,13 @@ function revealTradeResult(trade) {
     }
 
     if (type === 'win') {
+        triggerNotificationHaptic('success');
         showNotice(`${formatSignedMoney(trade.netChange)}`, 'win');
     } else if (type === 'jackpot') {
+        triggerNotificationHaptic('success');
         showNotice(`JACKPOT<br>${formatSignedMoney(trade.netChange)}`, 'jackpot');
     } else {
+        triggerNotificationHaptic('error');
         showNotice(`-${formatMoney(trade.amount)}`, 'lose');
     }
 }
