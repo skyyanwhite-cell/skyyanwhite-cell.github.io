@@ -452,14 +452,16 @@ function ensureAudioContext() {
     }
     if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
     return audioCtx;
-}
-
-// Кастомная система тактильной отдачи
-function triggerHaptic(style = 'medium') {
-    if (state.tg && state.tg.HapticFeedback) {
-        state.tg.HapticFeedback.impactOccurred(style);
     }
-}
+
+    // Кастомная система тактильной отдачи
+    function triggerHaptic(style = 'light') {
+    if (state.tg && state.tg.HapticFeedback) state.tg.HapticFeedback.impactOccurred(style);
+    }
+
+    function triggerNotificationHaptic(type = 'success') {
+    if (state.tg && state.tg.HapticFeedback) state.tg.HapticFeedback.notificationOccurred(type);
+    }
 
 function playClickSound() {
     triggerHaptic('medium');
@@ -1264,14 +1266,12 @@ function revealTradeResult(trade) {
         else type = 'win';
     }
 
-    if (type === 'win') {
-        triggerHaptic('heavy');
-        setTimeout(() => triggerHaptic('heavy'), 200);
+if (type === 'win') {
+        triggerNotificationHaptic('success');
         showNotice(`${formatSignedMoney(trade.netChange)}`, 'win');
     } else if (type === 'jackpot') {
-        triggerHaptic('heavy');
-        setTimeout(() => triggerHaptic('heavy'), 150);
-        setTimeout(() => triggerHaptic('heavy'), 300);
+        triggerNotificationHaptic('success');
+        setTimeout(() => triggerNotificationHaptic('warning'), 400);
         showNotice(`JACKPOT<br>${formatSignedMoney(trade.netChange)}`, 'jackpot');
     } else {
         triggerHaptic('light');
