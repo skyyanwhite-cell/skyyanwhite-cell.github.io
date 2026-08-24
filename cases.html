@@ -871,13 +871,25 @@ function drawMarketChart() {
             const segStart = (i - trade.entryIndex - 1) / trade.pathCandles.length;
             if (growTNow <= segStart) return;
         }
-        const x = indexToX(i, geo); const up = candle.c >= candle.o; const color = up ? '#1FAE64' : '#E5484D';
+        const x = indexToX(i, geo); const up = candle.c >= candle.o; 
         const yHigh = priceToY(candle.h, geo); const yLow = priceToY(candle.l, geo); const yOpen = priceToY(candle.o, geo); const yClose = priceToY(candle.c, geo);
-        ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, yHigh); ctx.lineTo(x, yLow); ctx.stroke();
+        
+        const grad = ctx.createLinearGradient(x - geo.bodyWidth / 2, 0, x + geo.bodyWidth / 2, 0);
+        if (up) {
+            grad.addColorStop(0, '#158F4E'); grad.addColorStop(0.5, '#32EA8F'); grad.addColorStop(1, '#158F4E');
+        } else {
+            grad.addColorStop(0, '#B82328'); grad.addColorStop(0.5, '#FF6B6B'); grad.addColorStop(1, '#B82328');
+        }
+        
+        ctx.strokeStyle = up ? '#32EA8F' : '#FF6B6B'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, yHigh); ctx.lineTo(x, yLow); ctx.stroke();
         const bodyTop = Math.min(yOpen, yClose); const bodyHeight = Math.max(1.5, Math.abs(yClose - yOpen));
-        ctx.fillStyle = color; ctx.fillRect(x - geo.bodyWidth / 2, bodyTop, geo.bodyWidth, bodyHeight);
+        
+        ctx.fillStyle = grad; 
+        ctx.fillRect(x - geo.bodyWidth / 2, bodyTop, geo.bodyWidth, bodyHeight);
+        
         const volHeight = (candle.v / geo.maxVolume) * geo.volumeAreaH;
-        ctx.globalAlpha = 0.55; ctx.fillRect(x - geo.bodyWidth / 2, geo.volumeAreaTop + (geo.volumeAreaH - volHeight), geo.bodyWidth, volHeight);
+        ctx.globalAlpha = 0.55; 
+        ctx.fillRect(x - geo.bodyWidth / 2, geo.volumeAreaTop + (geo.volumeAreaH - volHeight), geo.bodyWidth, volHeight);
         ctx.globalAlpha = 1;
     });
     drawTradeLines(ctx, geo); ctx.restore(); drawFlyingPopups(ctx);
