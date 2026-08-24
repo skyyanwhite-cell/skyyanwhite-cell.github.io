@@ -454,14 +454,30 @@ function ensureAudioContext() {
     return audioCtx;
     }
 
-    // Кастомная система тактильной отдачи
-    function triggerHaptic(style = 'light') {
-    if (state.tg && state.tg.HapticFeedback) state.tg.HapticFeedback.impactOccurred(style);
+// Кастомная система тактильной отдачи с дублером для Android
+function triggerHaptic(style = 'medium') {
+    if (state.tg && state.tg.HapticFeedback) {
+        state.tg.HapticFeedback.impactOccurred(style);
     }
+    // Дублер для Android
+    if (navigator.vibrate) {
+        if (style === 'light') navigator.vibrate(15);
+        else if (style === 'medium') navigator.vibrate(30);
+        else navigator.vibrate(50); // heavy
+    }
+}
 
-    function triggerNotificationHaptic(type = 'success') {
-    if (state.tg && state.tg.HapticFeedback) state.tg.HapticFeedback.notificationOccurred(type);
+function triggerNotificationHaptic(type = 'success') {
+    if (state.tg && state.tg.HapticFeedback) {
+        state.tg.HapticFeedback.notificationOccurred(type);
     }
+    // Дублер для Android
+    if (navigator.vibrate) {
+        if (type === 'success') navigator.vibrate([30, 60, 30]); // Двойной удар
+        else if (type === 'warning') navigator.vibrate([30, 60, 30, 60, 50]); // Тройной удар для джекпота
+        else navigator.vibrate(60); // Одиночный для ошибки
+    }
+}
 
 function playClickSound() {
     triggerHaptic('medium');
