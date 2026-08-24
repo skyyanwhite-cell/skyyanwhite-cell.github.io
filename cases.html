@@ -949,6 +949,32 @@ function spawnTickPopup(trade, candleIndex, priceAtTick) {
     
     if (candleIndex === trade.expiryIndex) newTotal = trade.netChange;
 
+    // Кап минуса: визуально не больше 100% от суммы ставки
+    if (newTotal < -trade.amount) {
+        newTotal = -trade.amount;
+    }
+
+    const delta = round2(newTotal - trade.lockedNet);
+    trade.lockedNet = newTotal;
+
+    trade.flyingPopups.push({
+        startX: startScreen.x,
+        startY: Math.max(14, Math.min(geo.cssHeight - 14, startScreen.y)),
+        targetX: geo.cssWidth / 2,
+        targetY: geo.cssHeight - 8,
+        delta: delta,
+        text: formatSignedMoney(delta),
+        positive: delta >= 0,
+        bornAt: performance.now(),
+        merged: false
+    });
+}
+    
+    let fraction = finalFavorableMove !== 0 ? favorable / finalFavorableMove : 1;
+    let newTotal = trade.netChange * fraction;
+    
+    if (candleIndex === trade.expiryIndex) newTotal = trade.netChange;
+
     const delta = round2(newTotal - trade.lockedNet);
     trade.lockedNet = newTotal;
 
