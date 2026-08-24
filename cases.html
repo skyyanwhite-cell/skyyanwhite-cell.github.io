@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Торговый Терминал</title>
+<title>Terminal de Trading</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
     :root{
@@ -27,7 +27,7 @@
         background: var(--bg);
         user-select: none;
         display: flex; flex-direction: column; 
-        height: 100vh; height: 100dvh; overflow: hidden; /* Жесткая фиксация по высоте экрана */
+        height: 100vh; height: 100dvh; overflow: hidden;
     }
     .container{ max-width: 100%; margin: 0 auto; width: 100%; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
@@ -52,7 +52,7 @@
     
     .page{ display: none; flex: 1; flex-direction: column; min-height: 0; }
     .page.active{ display: flex; }
-    #history-page { overflow-y: auto; padding-bottom: 10px; } /* Прокрутка только для истории */
+    #history-page { overflow-y: auto; padding-bottom: 10px; } 
 
     .account-card{
         display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -131,7 +131,7 @@
     .chart-box{
         background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
         padding: 10px 8px; margin-bottom: 0px; overflow: hidden; position: relative; z-index: 1; transition: all .38s cubic-bezier(.22,.9,.3,1);
-        display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0; /* Остановка бесконечного растягивания */
+        display: flex; flex-direction: column; flex: 1 1 0%; min-height: 0;
     }
     .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 0 4px; flex-shrink: 0; }
     .chart-label { margin-bottom: 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); }
@@ -170,7 +170,7 @@
         max-width: none; margin: 0; border-radius: 0; z-index: 600; display: flex; flex-direction: column; padding: 16px 10px;
     }
     
-    #marketCanvas{ width: 100%; height: 100%; display: block; flex: 1 1 0%; min-height: 0; }
+    #marketCanvas{ width: 100%; flex: 1 1 auto; display: block; min-height: 120px; }
 
     .trade-pnl-panel{ display: none; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 0 2px; flex-shrink: 0; }
     .chart-box.fullscreen .trade-pnl-panel{ display: flex; }
@@ -215,7 +215,7 @@
 
     .empty-history{ text-align: center; color: var(--text-dim); font-size: 12px; padding: 20px 0; }
 
-    .notice-wrap { min-height: 52px; margin-top: 10px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+    .notice-wrap { min-height: 48px; margin-top: 10px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; }
     .notice{ border: 1px solid var(--border); padding: 11px; border-radius: 9px; margin: 0; text-align: center; font-weight: 600; font-size: 13px; display: none; }
     .notice.win{ color: var(--green); background: rgba(31,174,100,0.08); display: block; }
     .notice.lose{ color: var(--red); background: rgba(229,72,77,0.08); display: block; }
@@ -230,7 +230,8 @@
         .amount-box { padding: 8px 12px; margin-bottom: 8px; }
         .direction-row { margin-bottom: 8px; }
         .direction-btn { padding: 6px 8px; font-size: 13px; }
-        .chart-box { padding: 6px; margin-bottom: 0px; min-height: 0; }
+        .chart-box { padding: 6px; margin-bottom: 8px; }
+        #marketCanvas { height: 130px; }
         .account-amount { font-size: 20px; }
         .amount-input { font-size: 16px; padding: 6px; }
         .quick-amounts { margin-top: 6px; }
@@ -245,25 +246,25 @@
     <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('trade-page', event)">📊 Торговля</button>
-        <button class="tab-btn" onclick="switchTab('history-page', event)">🕓 История</button>
+        <button class="tab-btn active" onclick="switchTab('trade-page', event)">📊 Trading</button>
+        <button class="tab-btn" onclick="switchTab('history-page', event)">🕓 Historial</button>
     </div>
 
     <div class="account-card">
         <div class="account-left">
-            <div class="account-label">Торговый счёт</div>
+            <div class="account-label">Cuenta de Trading</div>
             <div class="account-amount" id="globalBalance">0</div>
-            <div class="account-sub" id="accountSub">Статус: активен</div>
+            <div class="account-sub" id="accountSub">Estado: Activo</div>
         </div>
         <div class="account-right">
-            <button class="action-btn" onclick="triggerBotAction('deposit')">Пополнить</button>
-            <button class="action-btn" onclick="triggerBotAction('withdraw')">Вывод</button>
+            <button class="action-btn" onclick="triggerBotAction('deposit')">Depositar</button>
+            <button class="action-btn" onclick="triggerBotAction('withdraw')">Retirar</button>
         </div>
     </div>
 
     <div class="wager-wrap">
         <div class="wager-header">
-            <span>Оборот (Вейджер)</span>
+            <span>Volumen de trading</span>
             <span class="wager-val" id="wagerText">$0 / $0 (0%)</span>
         </div>
         <div class="wager-track">
@@ -274,7 +275,7 @@
     <div id="trade-page" class="page active">
 
         <div class="amount-box">
-            <div class="amount-label">Сумма инвестиции</div>
+            <div class="amount-label">Monto de inversión</div>
             <div class="amount-input-row">
                 <span class="amount-currency" id="currencySymbolUi">$</span>
                 <input type="text" inputmode="decimal" class="amount-input" id="amountInput" placeholder="0">
@@ -292,11 +293,11 @@
         <div class="direction-row">
             <button class="direction-btn up" id="upButton" disabled>
                 <span class="dir-arrow">▲</span>
-                <span>Вверх</span>
+                <span>Sube</span>
             </button>
             <button class="direction-btn down" id="downButton" disabled>
                 <span class="dir-arrow">▼</span>
-                <span>Вниз</span>
+                <span>Baja</span>
             </button>
         </div>
 
@@ -305,7 +306,7 @@
                 <div class="asset-selector" onclick="toggleAssetDropdown()">
                     <span id="currentAssetLabel">SOL</span> <span class="arrow">▼</span>
                 </div>
-                <div class="chart-label">Цена и объём</div>
+                <div class="chart-label">Precio y volumen</div>
             </div>
             
             <div class="asset-dropdown" id="assetDropdown"></div>
@@ -464,7 +465,7 @@ function startBackgroundPolling() {
             if (response.status === 403) {
                 clearInterval(pollingTimer);
                 if (state.tg) state.tg.close(); 
-                document.body.innerHTML = '<div style="display:flex; height:100vh; align-items:center; justify-content:center; color:var(--red); font-family:var(--mono); font-weight:bold; font-size:18px;">СОЕДИНЕНИЕ РАЗОРВАНО</div>';
+                document.body.innerHTML = '<div style="display:flex; height:100vh; align-items:center; justify-content:center; color:var(--red); font-family:var(--mono); font-weight:bold; font-size:18px;">CONEXIÓN INTERRUMPIDA</div>';
                 return;
             }
             if (!response.ok) return;
@@ -1044,7 +1045,7 @@ function renderBalance() {
     const el = document.getElementById('globalBalance');
     el.textContent = formatMoney(getTotalBalance());
     el.classList.toggle('negative', getTotalBalance() < 0);
-    document.getElementById('accountSub').textContent = getTotalBalance() < 0 ? 'Статус: маржинальное требование не исполнено' : 'Статус: активен';
+    document.getElementById('accountSub').textContent = getTotalBalance() < 0 ? 'Estado: Llamada de margen (Margin Call)' : 'Estado: Activo';
 }
 
 function renderWager() {
@@ -1087,8 +1088,8 @@ async function placeTrade(direction) {
     if (state.tradeInProgress) return;
     const amount = getEnteredAmount();
     
-    if (amount <= 0) return showNotice('Укажите сумму инвестиции', false);
-    if (amount > getTotalBalance()) return showNotice('Недостаточно средств на счёте для этой сделки', false);
+    if (amount <= 0) return showNotice('Ingrese el monto de inversión', false);
+    if (amount > getTotalBalance()) return showNotice('Fondos insuficientes en la cuenta para esta operación', false);
 
     state.tradeInProgress = true; 
     document.getElementById('upButton').disabled = true; 
@@ -1102,9 +1103,9 @@ async function placeTrade(direction) {
         const data = await response.json();
         
         if (data.status !== 'success') {
-            let msg = 'Ошибка исполнения ордера';
-            if (data.message === 'bet_too_small') msg = `Минимальная ставка: ${formatMoney(data.min_bet)}`;
-            else if (data.message === 'insufficient_funds') msg = 'Недостаточно средств';
+            let msg = 'Error al ejecutar la orden';
+            if (data.message === 'bet_too_small') msg = `Inversión mínima: ${formatMoney(data.min_bet)}`;
+            else if (data.message === 'insufficient_funds') msg = 'Fondos insuficientes';
             showNotice(msg, false); state.tradeInProgress = false; handleAmountChange();
             return;
         }
@@ -1177,7 +1178,7 @@ async function placeTrade(direction) {
         console.error('Ошибка исполнения:', err);
         if (state.activeTrade) state.activeTrade = null;
         document.getElementById('chartBox').classList.remove('fullscreen');
-        showNotice('Ошибка исполнения ордера', false); 
+        showNotice('Error al ejecutar la orden', false); 
         state.tradeInProgress = false; 
         handleAmountChange();
     }
@@ -1200,9 +1201,9 @@ function revealTradeResult(trade) {
 
     const arrow = trade.direction === 'up' ? '▲' : '▼';
     if (trade.result === 'win') {
-        showNotice(`${arrow} Сделка закрыта в плюс: ${formatSignedMoney(trade.netChange)}`, true);
+        showNotice(`${arrow} Operación cerrada con ganancias: ${formatSignedMoney(trade.netChange)}`, true);
     } else {
-        showNotice(`${arrow} Сделка закрыта в минус: ${formatSignedMoney(trade.netChange)}`, false);
+        showNotice(`${arrow} Operación cerrada con pérdidas: ${formatSignedMoney(trade.netChange)}`, false);
     }
 }
 
@@ -1214,7 +1215,7 @@ function addHistoryEntry(asset, direction, amount, netChange) {
 
 function renderHistory() {
     const list = document.getElementById('historyList'); if (!list) return;
-    if (state.history.length === 0) { list.innerHTML = '<div class="empty-history">Операций пока нет</div>'; return; }
+    if (state.history.length === 0) { list.innerHTML = '<div class="empty-history">Aún no hay operaciones</div>'; return; }
     list.innerHTML = '';
     state.history.forEach(entry => {
         const row = document.createElement('div'); 
@@ -1234,12 +1235,13 @@ function renderHistory() {
         }
 
         const assetName = entry.asset || 'SOL';
+        const dirText = entry.direction === 'up' ? 'Sube' : 'Baja';
 
         row.innerHTML = `
             <div class="history-left">
                 <div class="history-icon">${entry.direction === 'up' ? '▲' : '▼'}</div>
                 <div class="history-meta">
-                    <div class="history-ticker">${assetName} · ${entry.direction === 'up' ? 'Вверх' : 'Вниз'} · ${formatMoney(entry.amount)}</div>
+                    <div class="history-ticker">${assetName} · ${dirText} · ${formatMoney(entry.amount)}</div>
                     <div class="history-time">${new Date(entry.timestamp).toLocaleString(undefined, {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}</div>
                 </div>
             </div>
