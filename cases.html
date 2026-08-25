@@ -1087,9 +1087,9 @@ function runTradeAnimation() {
             updateGrowingPath(trade, totalProgress); 
             drawMarketChart();
             
-            // Удерживаем экран 2.5 секунды после показа результата
+            // Удерживаем зум ровно 1 секунду (1000 мс) после показа результата
             let timeSinceReveal = trade.revealed ? (now - trade.revealTime) : 0;
-            let holdScreen = trade.revealed && timeSinceReveal < 2500;
+            let holdScreen = trade.revealed && timeSinceReveal < 1000;
 
             if (totalProgress < 1 || trade.flyingPopups.length > 0 || !trade.revealed || holdScreen) {
                 tradeAnimFrameId = requestAnimationFrame(frame);
@@ -1360,7 +1360,9 @@ function showNotice(message, type) {
     msgBox.className = `notice-msg ${type}`;
     overlay.style.display = 'flex';
     if (noticeTimer) clearTimeout(noticeTimer);
-    noticeTimer = setTimeout(() => { overlay.style.display = 'none'; }, type === 'lose' ? 2500 : 4000);
+    
+    // Окно будет видно суммарно 2.5 секунды (1с в зуме и 1.5с на свернутом графике)
+    noticeTimer = setTimeout(() => { overlay.style.display = 'none'; }, 2500);
 }
 function hideNotice() { document.getElementById('noticeOverlay').style.display = 'none'; }
 document.addEventListener('DOMContentLoaded', init);
