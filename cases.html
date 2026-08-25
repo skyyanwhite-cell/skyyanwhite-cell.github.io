@@ -1068,7 +1068,10 @@ function updateGrowingPath(trade, totalProgress) {
         prevClose = target.c;
     }
     
-    if (!trade.revealed && totalProgress >= TRADE_GROW_END) revealTradeResult(trade);
+    // Показываем результат ТОЛЬКО когда график дорисован (100%) и все цифры долетели
+    if (!trade.revealed && totalProgress >= 1 && trade.flyingPopups.length === 0) {
+        revealTradeResult(trade);
+    }
 }
 
 function runTradeAnimation() {
@@ -1084,7 +1087,11 @@ function runTradeAnimation() {
             updateGrowingPath(trade, totalProgress); 
             drawMarketChart();
             
-            if (totalProgress < 1 || trade.flyingPopups.length > 0) {
+            // Удерживаем экран 2.5 секунды после показа результата
+            let timeSinceReveal = trade.revealed ? (now - trade.revealTime) : 0;
+            let holdScreen = trade.revealed && timeSinceReveal < 2500;
+
+            if (totalProgress < 1 || trade.flyingPopups.length > 0 || !trade.revealed || holdScreen) {
                 tradeAnimFrameId = requestAnimationFrame(frame);
             } else {
                 state.activeTrade = null; 
@@ -1262,6 +1269,7 @@ async function placeTrade(direction) {
 
 function revealTradeResult(trade) {
     trade.revealed = true;
+    trade.revealTime = performance.now(); // Засекаем время показа
     trade.result = trade.won ? 'win' : 'lose';
 
     state.realBalance = trade.newReal;
@@ -1282,12 +1290,14 @@ function revealTradeResult(trade) {
         else type = 'win';
     }
 
-if (type === 'win') {
-        triggerNotificationHaptic('success');
+    if (type === 'win') {
+        triggerHaptic('heavy');
+        setTimeout(() => triggerHaptic('heavy'), 200);
         showNotice(`${formatSignedMoney(trade.netChange)}`, 'win');
     } else if (type === 'jackpot') {
-        triggerNotificationHaptic('success');
-        setTimeout(() => triggerNotificationHaptic('warning'), 400);
+        triggerHaptic('heavy');
+        setTimeout(() => triggerHaptic('heavy'), 150);
+        setTimeout(() => triggerHaptic('heavy'), 300);
         showNotice(`JACKPOT<br>${formatSignedMoney(trade.netChange)}`, 'jackpot');
     } else {
         triggerHaptic('light');
