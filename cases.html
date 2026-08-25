@@ -504,6 +504,52 @@ function playMergeSound(positive) {
     } catch (err) {}
 }
 
+    function playResultSound(type) {
+    try {
+        const ctx = ensureAudioContext(); if (!ctx) return;
+        const now = ctx.currentTime;
+
+        if (type === 'win') {
+            // Торжественное восходящее арпеджио
+            const notes = [523.25, 659.25, 783.99]; // Ноты C5, E5, G5
+            notes.forEach((freq, i) => {
+                const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                osc.type = 'triangle'; osc.frequency.value = freq;
+                const startTime = now + i * 0.12;
+                osc.connect(gain); gain.connect(ctx.destination);
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.12, startTime + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
+                osc.start(startTime); osc.stop(startTime + 0.4);
+            });
+        } else if (type === 'jackpot') {
+            // Грандиозная долгая фанфара
+            const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // C5, E5, G5, C6, E6
+            notes.forEach((freq, i) => {
+                const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                osc.type = 'triangle'; osc.frequency.value = freq;
+                const startTime = now + i * 0.08;
+                osc.connect(gain); gain.connect(ctx.destination);
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.15, startTime + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.7);
+                osc.start(startTime); osc.stop(startTime + 0.7);
+            });
+        } else {
+            // Нейтральный, мягкий падающий звук проигрыша
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(261.63, now); // Начинаем с C4
+            osc.frequency.exponentialRampToValueAtTime(130.81, now + 0.3); // Плавно падаем до C3
+            osc.connect(gain); gain.connect(ctx.destination);
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.15, now + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+            osc.start(now); osc.stop(now + 0.4);
+        }
+    } catch (e) {}
+}
+    
 document.addEventListener('pointerdown', function (evt) {
     if (evt.target.closest('button, .quick-chip, .tab-btn, [onclick], .asset-item')) playClickSound();
 
@@ -1269,7 +1315,7 @@ async function placeTrade(direction) {
 
 function revealTradeResult(trade) {
     trade.revealed = true;
-    trade.revealTime = performance.now(); // Засекаем время показа
+    trade.revealTime = performance.now();
     trade.result = trade.won ? 'win' : 'lose';
 
     state.realBalance = trade.newReal;
@@ -1293,14 +1339,17 @@ function revealTradeResult(trade) {
     if (type === 'win') {
         triggerHaptic('heavy');
         setTimeout(() => triggerHaptic('heavy'), 200);
+        playResultSound('win'); // <--- Звук победы
         showNotice(`${formatSignedMoney(trade.netChange)}`, 'win');
     } else if (type === 'jackpot') {
         triggerHaptic('heavy');
         setTimeout(() => triggerHaptic('heavy'), 150);
         setTimeout(() => triggerHaptic('heavy'), 300);
+        playResultSound('jackpot'); // <--- Звук джекпота
         showNotice(`JACKPOT<br>${formatSignedMoney(trade.netChange)}`, 'jackpot');
     } else {
         triggerHaptic('light');
+        playResultSound('lose'); // <--- Нейтральный звук проигрыша
         showNotice(`${formatSignedMoney(trade.netChange)}`, 'lose');
     }
 }
