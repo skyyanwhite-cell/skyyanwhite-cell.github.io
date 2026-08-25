@@ -1068,8 +1068,8 @@ function updateGrowingPath(trade, totalProgress) {
         prevClose = target.c;
     }
     
-    // Показываем результат ТОЛЬКО когда график дорисован (100%) и все цифры долетели
-    if (!trade.revealed && totalProgress >= 1 && trade.flyingPopups.length === 0) {
+    // Показываем результат на 95% прогресса, если цифры уже долетели
+    if (!trade.revealed && totalProgress >= 0.95 && trade.flyingPopups.length === 0) {
         revealTradeResult(trade);
     }
 }
@@ -1087,9 +1087,9 @@ function runTradeAnimation() {
             updateGrowingPath(trade, totalProgress); 
             drawMarketChart();
             
-            // Удерживаем зум ровно 1 секунду (1000 мс) после показа результата
+            // Минимальная задержка зума (150 мс), чтобы окно плавно появилось
             let timeSinceReveal = trade.revealed ? (now - trade.revealTime) : 0;
-            let holdScreen = trade.revealed && timeSinceReveal < 1000;
+            let holdScreen = trade.revealed && timeSinceReveal < 150;
 
             if (totalProgress < 1 || trade.flyingPopups.length > 0 || !trade.revealed || holdScreen) {
                 tradeAnimFrameId = requestAnimationFrame(frame);
