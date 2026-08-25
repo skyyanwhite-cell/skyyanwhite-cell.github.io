@@ -1291,7 +1291,7 @@ if (type === 'win') {
         showNotice(`JACKPOT<br>${formatSignedMoney(trade.netChange)}`, 'jackpot');
     } else {
         triggerHaptic('light');
-        showNotice(`-${formatMoney(trade.amount)}`, 'lose');
+        showNotice(`${formatSignedMoney(trade.netChange)}`, 'lose');
     }
 }
 
